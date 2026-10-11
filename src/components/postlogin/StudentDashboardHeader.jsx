@@ -318,6 +318,7 @@ export default function StudentDashboardHeader({
 
   const rejectedDocs = docs.filter(d => d && (d.status === 'Rejected' || d.verificationStatus === 'Rejected'));
   const hasRejectedDoc = rejectedDocs.length > 0 || application?.document_status === 'Rejected';
+  const allDocsVerified = docs.length > 0 && docs.every(d => d && (d.status === 'Verified' || d.verificationStatus === 'Verified'));
 
   const isDocVerified = Boolean(
     allDocsVerified || 

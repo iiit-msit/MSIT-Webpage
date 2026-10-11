@@ -127,7 +127,7 @@ export function AdminAuthProvider({ children }) {
           .from('admin_users')
           .select('email, role')
           .eq('email', email)
-          .single();
+          .maybeSingle();
 
         if (!error && data) {
           setAdminUser(user);

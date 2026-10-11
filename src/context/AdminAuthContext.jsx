@@ -13,7 +13,7 @@ function getSiteUrl() {
   if (typeof window !== 'undefined' && window.location.origin) {
     return window.location.origin;
   }
-  return 'https://msit-webpage.vercel.app';
+  return 'https://msit.ac.in';
 }
 
 export function useAdminAuth() {

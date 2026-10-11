@@ -11,11 +11,11 @@ const AuthContext = createContext(null);
 function getSiteUrl(targetPath = '/programme') {
   // 1. Env var set in Vercel / .env (most reliable for deployed environments)
   const envUrl = import.meta?.env?.VITE_SITE_URL;
-  let base = 'https://msit-webpage.vercel.app';
+  let base = 'https://msit.ac.in';
   if (envUrl) {
     base = envUrl.replace(/\/+$/, '');
   } else if (typeof window !== 'undefined' && window.location.origin) {
-    // 2. Runtime origin (e.g. http://localhost:3000)
+    // 2. Runtime origin (e.g. http://localhost:3000, or current custom domain)
     base = window.location.origin;
   }
 

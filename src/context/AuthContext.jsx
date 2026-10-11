@@ -5,11 +5,11 @@ const AuthContext = createContext(null);
 
 /**
  * Get the canonical site URL for auth redirects.
- * Priority: VITE_SITE_URL env var > window.location.origin > hardcoded fallback.
- * This prevents magic-link emails from redirecting to localhost:3000.
+ * Priority: VITE_SITE_URL env var > window.location.origin > hardcoded fallback (https://msit.ac.in).
+ * This prevents magic-link emails from redirecting to localhost or incorrect domains.
  */
 function getSiteUrl(targetPath = '/programme') {
-  // 1. Env var set in Vercel / .env (most reliable for deployed environments)
+  // 1. Env var set in production environment / .env
   const envUrl = import.meta?.env?.VITE_SITE_URL;
   let base = 'https://msit.ac.in';
   if (envUrl) {

@@ -80,18 +80,13 @@ experience works without any configuration.
 
 ---
 
-## 🌐 Deployment on Vercel
+## 🌐 Production Deployment (https://msit.ac.in)
 
-This repository is pre-configured for one-click deployment on **Vercel**:
-
-1. Log into [Vercel](https://vercel.com/) and click **Add New Project**.
-2. Select and import the `Devidarshanam/MSIT-Webpage` repository.
-3. Vercel will automatically detect **Vite**:
-   - **Framework Preset**: `Vite`
-   - **Build Command**: `npm run build`
-   - **Output Directory**: `dist`
-   - **Install Command**: `npm install`
-4. Click **Deploy**. Your site will be live on your Vercel URL with continuous deployment on every Git push!
+This repository is maintained by **IIIT Hyderabad (iiit-msit)**:
+- **Repository**: `https://github.com/iiit-msit/MSIT-Webpage`
+- **Live Production URL**: [https://msit.ac.in](https://msit.ac.in)
+- **Build Command**: `npm run build`
+- **Output Directory**: `dist`
 
 ---
 

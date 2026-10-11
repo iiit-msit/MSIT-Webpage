@@ -39,6 +39,6 @@ git push origin main
 echo.
 echo ===================================================
 echo PUSH COMPLETE!
-echo Vercel is now deploying your website to production.
+echo Your website is now updated to production at https://msit.ac.in
 echo ===================================================
 pause

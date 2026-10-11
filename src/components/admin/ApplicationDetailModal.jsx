@@ -602,8 +602,9 @@ export default function ApplicationDetailModal({
                     </div>
                     <p className="summary-reason-text">
                       {currentApp.decision_reason
-                        ?.replace(/faculty\s*(interview)?\s*round/gi, 'one on one interview')
-                        ?.replace(/faculty interview/gi, 'one on one interview')}
+                        ?.replace(/faculty\s*(interview)?\s*round/gi, 'one on one discussion')
+                        ?.replace(/faculty interview/gi, 'one on one discussion')
+                        ?.replace(/one[- ]on[- ]one interview/gi, 'one on one discussion')}
                     </p>
                   </div>
                 )}
@@ -1435,8 +1436,9 @@ export default function ApplicationDetailModal({
                           {item.reason && (
                             <p className="timeline-reason">
                               Reason / Note: {item.reason
-                                ?.replace(/faculty\s*(interview)?\s*round/gi, 'one on one interview')
-                                ?.replace(/faculty interview/gi, 'one on one interview')}
+                                ?.replace(/faculty\s*(interview)?\s*round/gi, 'one on one discussion')
+                                ?.replace(/faculty interview/gi, 'one on one discussion')
+                                ?.replace(/one[- ]on[- ]one interview/gi, 'one on one discussion')}
                             </p>
                           )}
                         </div>

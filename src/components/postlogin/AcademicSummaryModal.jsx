@@ -76,7 +76,7 @@ export default function AcademicSummaryModal({ isOpen, onClose }) {
                 <li><strong>Eligibility:</strong> Graduates with 16 years of formal education (CS, AI & Math).</li>
                 <li><strong>Commencement:</strong> 2 January 2027.</li>
                 <li><strong>Admission Modes:</strong> GRE, GATE, or MSIT Entrance Exam.</li>
-                <li><strong>Interview & Selection:</strong> One-on-one interview & final selection.</li>
+                <li><strong>Interview & Selection:</strong> One-on-one discussion & final selection.</li>
               </ul>
             </div>
           </div>

@@ -77,7 +77,7 @@ export default function NextStepsAndApplicationSection({
                 {applicationStatus === 'Draft' && 'You have an active saved draft. Pick up right where you left off.'}
                 {applicationStatus === 'Submitted' && 'Your application has been received and is queued for admissions review.'}
                 {applicationStatus === 'Under Review' && 'Your application and credentials are being reviewed by the admissions team.'}
-                {['Interview Scheduled', 'Shortlisted for Interview'].includes(applicationStatus) && 'You are shortlisted for one-on-one interview! Check your interview schedule above.'}
+                {['Interview Scheduled', 'Shortlisted for Interview'].includes(applicationStatus) && 'You are shortlisted for one-on-one discussion! Check your interview schedule above.'}
                 {['Scheduled for MSIT PGEE Exam', 'MSIT PGEE Exam Required'].includes(applicationStatus) && 'You are scheduled for the MSIT PGEE examination. Review test schedule details above.'}
                 {applicationStatus === 'Awaiting MSIT PGEE Result' && 'Your entrance exam is recorded. Evaluation outcome will be published shortly.'}
                 {applicationStatus === 'Additional Information Required' && 'Admissions has requested updates. Please review the notes and resubmit.'}

@@ -116,10 +116,10 @@ export default function StudentDashboardHeader({
       badgeColor: '#1d4ed8',
       badgeBorder: '#bfdbfe',
       dotColor: '#2563eb',
-      title: 'Shortlisted for One-on-One Interview',
+      title: 'Shortlisted for One-on-One Discussion',
       description: application?.interview_date 
         ? `Your interview has been scheduled for ${application.interview_date}${application.interview_time ? ` at ${application.interview_time}` : ''}. Please prepare for technical problem solving.`
-        : 'You have been shortlisted for the one-on-one interview round. Admissions team will notify you with the slot details shortly.',
+        : 'You have been shortlisted for the one-on-one discussion round. Admissions team will notify you with the slot details shortly.',
       noteIcon: <ClockIcon size={16} />,
       noteBg: '#eff6ff',
       noteBorder: '#bfdbfe',
@@ -133,10 +133,10 @@ export default function StudentDashboardHeader({
       badgeColor: '#1d4ed8',
       badgeBorder: '#bfdbfe',
       dotColor: '#2563eb',
-      title: 'One-on-One Interview Scheduled',
+      title: 'One-on-One Discussion Scheduled',
       description: application?.interview_date 
         ? `Your interview is confirmed for ${application.interview_date}${application.interview_time ? ` at ${application.interview_time}` : ''}${application?.interview_mode ? ` (${application.interview_mode})` : ''}. Review computer science and mathematical fundamentals.`
-        : 'Your one-on-one interview slot is being scheduled by the admissions committee.',
+        : 'Your one-on-one discussion slot is being scheduled by the admissions committee.',
       noteIcon: <CalendarIcon size={16} />,
       noteBg: '#eff6ff',
       noteBorder: '#bfdbfe',
@@ -151,7 +151,7 @@ export default function StudentDashboardHeader({
       badgeBorder: '#fde68a',
       dotColor: '#f59e0b',
       title: 'MSIT PGEE Entrance Exam Scheduled',
-      description: `You are scheduled for the MSIT PGEE Exam on ${application?.gat_exam_date || admissionSettings?.gatExamDate || 'December 15, 2026'}${application?.gat_slot ? ` (${application.gat_slot})` : ''} at IIITH Nilgiri. Successful completion qualifies you for the one-on-one interview.`,
+      description: `You are scheduled for the MSIT PGEE Exam on ${application?.gat_exam_date || admissionSettings?.gatExamDate || 'December 15, 2026'}${application?.gat_slot ? ` (${application.gat_slot})` : ''} at IIITH Nilgiri. Successful completion qualifies you for the one-on-one discussion.`,
       noteIcon: <ClockIcon size={16} />,
       noteBg: '#fffbeb',
       noteBorder: '#fde68a',

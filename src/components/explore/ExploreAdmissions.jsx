@@ -99,7 +99,7 @@ export default function ExploreAdmissions({ onGoToSignIn }) {
               </div>
             </div>
             <span className="step-stage-tag">Step 3 • Technical Counseling</span>
-            <h4>One-on-One Interview</h4>
+            <h4>One-on-One Discussion</h4>
             <p>Engage in a constructive 1-on-1 dialogue with academic mentors focused on analytical thinking, curiosity, and learning mindset.</p>
           </div>
 

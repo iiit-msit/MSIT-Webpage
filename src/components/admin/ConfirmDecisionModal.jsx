@@ -73,7 +73,7 @@ export default function ConfirmDecisionModal({
         return;
       }
       if (!finalReason) {
-        finalReason = `Shortlisted for in-person one on one interview on ${interviewDate} at ${interviewTime} at IIITH Nilgiri.`;
+        finalReason = `Shortlisted for in-person one on one discussion on ${interviewDate} at ${interviewTime} at IIITH Nilgiri.`;
       }
       extraPayload.status = 'Interview Scheduled';
       extraPayload.interview_date = interviewDate;
@@ -155,10 +155,10 @@ export default function ConfirmDecisionModal({
             <>
               <div className="decision-notice-box" style={{ background: '#eff6ff', border: '1px solid #bfdbfe', color: '#1e40af', padding: '0.85rem 1rem', borderRadius: '8px', marginBottom: '1.25rem' }}>
                 <p style={{ margin: 0, fontWeight: '600', fontSize: '0.9rem' }}>
-                  Candidate Qualified for One-on-One Interview
+                  Candidate Qualified for One-on-One Discussion
                 </p>
                 <span style={{ fontSize: '0.82rem', color: '#3b82f6', display: 'block', marginTop: '0.25rem' }}>
-                  Applicant holds verified entrance scores and documents. Set the interview date and time below for their in-person one on one interview at IIITH Nilgiri.
+                  Applicant holds verified entrance scores and documents. Set the interview date and time below for their in-person one on one discussion at IIITH Nilgiri.
                 </span>
               </div>
 

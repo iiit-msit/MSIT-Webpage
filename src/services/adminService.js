@@ -415,8 +415,9 @@ export function enrichApplicationRecord(app, localApps = []) {
 
   if (enriched.decision_reason) {
     enriched.decision_reason = enriched.decision_reason
-      .replace(/faculty\s*(interview)?\s*round/gi, 'one on one interview')
-      .replace(/faculty interview/gi, 'one on one interview');
+      .replace(/faculty\s*(interview)?\s*round/gi, 'one on one discussion')
+      .replace(/faculty interview/gi, 'one on one discussion')
+      .replace(/one[- ]on[- ]one interview/gi, 'one on one discussion');
   }
 
   // If Supabase was missing critical fields or contained stale dummy values, sync cleansed values
@@ -746,7 +747,10 @@ export async function updateApplicationStatus(applicationId, newStatus, reason =
   const now = new Date().toISOString();
   const isUuid = (val) => Boolean(val && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(val).trim()));
   const cleanReason = reason 
-    ? reason.replace(/faculty\s*(interview)?\s*round/gi, 'one on one interview').replace(/faculty interview/gi, 'one on one interview')
+    ? reason
+        .replace(/faculty\s*(interview)?\s*round/gi, 'one on one discussion')
+        .replace(/faculty interview/gi, 'one on one discussion')
+        .replace(/one[- ]on[- ]one interview/gi, 'one on one discussion')
     : reason;
 
   // 1. Update local storage
@@ -1007,7 +1011,10 @@ export function getStatusHistory(applicationId) {
       .map(l => ({
         ...l,
         reason: l.reason 
-          ? l.reason.replace(/faculty\s*(interview)?\s*round/gi, 'one on one interview').replace(/faculty interview/gi, 'one on one interview') 
+          ? l.reason
+              .replace(/faculty\s*(interview)?\s*round/gi, 'one on one discussion')
+              .replace(/faculty interview/gi, 'one on one discussion')
+              .replace(/one[- ]on[- ]one interview/gi, 'one on one discussion')
           : l.reason
       }));
   } catch (e) {

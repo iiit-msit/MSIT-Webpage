@@ -1,4 +1,5 @@
 import { supabase, isSupabaseConfigured } from '../lib/supabase.js';
+import { readFileAsDataUrl, saveDocumentToIndexedDB } from '../utils/documentStore.js';
 export { getAdmissionSettings } from './adminService.js';
 
 export const LOCAL_STORAGE_APPS_KEY = 'msit_all_submitted_applications';
@@ -498,6 +499,39 @@ export async function uploadDocumentFile(file, docType, applicationId, authUser 
   const now = new Date().toISOString();
   const fileId = `doc_${Math.random().toString(36).substring(2, 9)}`;
 
+  // Read file as base64 Data URL for persistent viewing
+  let dataUrl = '';
+  try {
+    dataUrl = await readFileAsDataUrl(file);
+    if (dataUrl) {
+      await saveDocumentToIndexedDB(`file_${fileId}`, {
+        id: `file_${fileId}`,
+        fileId,
+        fileName: file.name,
+        fileSize: formattedSize,
+        mimeType: file.type || `application/${ext}`,
+        dataUrl,
+        applicationId,
+        docType
+      });
+      const sanitizedDocType = docType.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
+      if (applicationId) {
+        await saveDocumentToIndexedDB(`doc_${applicationId}_${sanitizedDocType}`, {
+          id: `doc_${applicationId}_${sanitizedDocType}`,
+          fileId,
+          fileName: file.name,
+          fileSize: formattedSize,
+          mimeType: file.type || `application/${ext}`,
+          dataUrl,
+          applicationId,
+          docType
+        });
+      }
+    }
+  } catch (readErr) {
+    console.warn('[MSIT] Failed to read file as data URL:', readErr);
+  }
+
   // 1. Attempt Supabase Storage upload if authenticated and configured
   if (isSupabaseConfigured() && supabase && authUser?.id) {
     try {
@@ -524,7 +558,8 @@ export async function uploadDocumentFile(file, docType, applicationId, authUser 
           fileSize: formattedSize,
           mimeType: file.type || `application/${ext}`,
           storagePath: storagePath,
-          fileUrl: publicUrlData?.publicUrl || storagePath,
+          fileUrl: publicUrlData?.publicUrl || dataUrl || storagePath,
+          dataUrl: dataUrl,
           status: 'Uploaded',
           uploadedAt: now
         };
@@ -538,8 +573,7 @@ export async function uploadDocumentFile(file, docType, applicationId, authUser 
     }
   }
 
-  // 2. Resilient local object URL fallback
-  const fallbackUrl = typeof window !== 'undefined' ? URL.createObjectURL(file) : '';
+  // 2. Direct Data URL + IndexedDB persistence (permanent and reliable)
   const docRecord = {
     id: fileId,
     docType,
@@ -547,7 +581,8 @@ export async function uploadDocumentFile(file, docType, applicationId, authUser 
     fileSize: formattedSize,
     mimeType: file.type || `application/${ext}`,
     storagePath: `local_${file.name}`,
-    fileUrl: fallbackUrl,
+    fileUrl: dataUrl || (typeof window !== 'undefined' ? URL.createObjectURL(file) : ''),
+    dataUrl: dataUrl,
     status: 'Uploaded',
     uploadedAt: now,
     isLocal: true
@@ -593,7 +628,8 @@ export async function submitStudentApplication(applicationData, authUser = null)
           doc_type: doc.docType || key,
           file_name: doc.fileName,
           file_size: doc.fileSize || '1.0 MB',
-          file_url: doc.fileUrl || '',
+          file_url: doc.fileUrl || doc.file_url || doc.dataUrl || '',
+          dataUrl: doc.dataUrl || doc.fileUrl || doc.file_url || '',
           storage_path: doc.storagePath || '',
           status: 'Pending',
           uploaded_at: doc.uploadedAt || now
@@ -609,7 +645,8 @@ export async function submitStudentApplication(applicationData, authUser = null)
       doc_type: 'CV / Resume',
       file_name: applicationData.cvDocument.fileName,
       file_size: applicationData.cvDocument.fileSize || '1.0 MB',
-      file_url: applicationData.cvDocument.fileUrl || '',
+      file_url: applicationData.cvDocument.fileUrl || applicationData.cvDocument.file_url || applicationData.cvDocument.dataUrl || '',
+      dataUrl: applicationData.cvDocument.dataUrl || applicationData.cvDocument.fileUrl || '',
       storage_path: applicationData.cvDocument.storagePath || '',
       status: 'Pending',
       uploaded_at: applicationData.cvDocument.uploadedAt || now
@@ -833,7 +870,8 @@ export async function updateStudentApplication(applicationId, updateData, authUs
           doc_type: doc.docType || doc.doc_type || key,
           file_name: doc.fileName || doc.file_name,
           file_size: doc.fileSize || doc.file_size || '1.0 MB',
-          file_url: doc.fileUrl || doc.file_url || '',
+          file_url: doc.fileUrl || doc.file_url || doc.dataUrl || '',
+          dataUrl: doc.dataUrl || doc.fileUrl || doc.file_url || '',
           storage_path: doc.storagePath || doc.storage_path || '',
           status: doc.status || 'Pending',
           uploaded_at: doc.uploadedAt || doc.uploaded_at || now
@@ -848,7 +886,8 @@ export async function updateStudentApplication(applicationId, updateData, authUs
       doc_type: 'CV / Resume',
       file_name: updateData.cvDocument.fileName || updateData.cvDocument.file_name,
       file_size: updateData.cvDocument.fileSize || updateData.cvDocument.file_size || '1.0 MB',
-      file_url: updateData.cvDocument.fileUrl || updateData.cvDocument.file_url || '',
+      file_url: updateData.cvDocument.fileUrl || updateData.cvDocument.file_url || updateData.cvDocument.dataUrl || '',
+      dataUrl: updateData.cvDocument.dataUrl || updateData.cvDocument.fileUrl || '',
       storage_path: updateData.cvDocument.storagePath || updateData.cvDocument.storage_path || '',
       status: 'Pending',
       uploaded_at: updateData.cvDocument.uploadedAt || updateData.cvDocument.uploaded_at || now

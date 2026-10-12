@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { XIcon, CheckCircleIcon, DownloadIcon } from '../Icons';
+import { XIcon, CheckCircleIcon, DownloadIcon, ExternalLinkIcon } from '../Icons';
 import { StatusBadge } from './StatusBadge';
+import { openDocumentInNewTab, getDocumentFromIndexedDB, generateOfficialPdfDataUrl } from '../../utils/documentStore';
 
 export default function DocumentReviewModal({
   isOpen,
@@ -80,15 +81,32 @@ export default function DocumentReviewModal({
               <button
                 type="button"
                 className="btn btn-secondary btn-sm"
-                onClick={() => {
-                  // Simulate open / preview in new tab
-                  const dummyContent = `MSIT Application Document Preview\n================================\nApplicant: ${applicantName}\nApplication ID: ${applicationId}\nDocument: ${document.doc_type}\nFile: ${document.file_name}\nStatus: ${document.status}`;
-                  const blob = new Blob([dummyContent], { type: 'text/plain' });
-                  const url = URL.createObjectURL(blob);
-                  window.open(url, '_blank');
+                onClick={async () => {
+                  const targetUrl = document.file_url || document.fileUrl || document.dataUrl;
+                  if (targetUrl && (targetUrl.startsWith('data:') || targetUrl.startsWith('http://') || targetUrl.startsWith('https://'))) {
+                    openDocumentInNewTab(targetUrl, document.file_name);
+                    return;
+                  }
+                  // Check IndexedDB
+                  try {
+                    const fromDb = await getDocumentFromIndexedDB(`file_${document.id}`);
+                    if (fromDb && fromDb.dataUrl) {
+                      openDocumentInNewTab(fromDb.dataUrl, document.file_name);
+                      return;
+                    }
+                  } catch (e) {}
+
+                  // Fallback to official PDF document
+                  const pdfUrl = generateOfficialPdfDataUrl({
+                    docType: document.doc_type || 'Candidate Document',
+                    fileName: document.file_name || 'Document.pdf',
+                    applicantName,
+                    applicationId
+                  });
+                  openDocumentInNewTab(pdfUrl, document.file_name);
                 }}
               >
-                <DownloadIcon size={16} />
+                <ExternalLinkIcon size={16} />
                 <span>Open / View Document</span>
               </button>
             </div>

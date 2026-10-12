@@ -41,8 +41,11 @@ export default function ApplicationDetailModal({
   // Active section tab in modal: 'details' | 'workflow' | 'documents' | 'notes' | 'history'
   const [activeSection, setActiveSection] = useState('details');
 
-  // Certificate Viewer Modal State
-  const [viewingCertificate, setViewingCertificate] = useState(null);
+  // Certificate & Document Viewer Modal State
+  const [viewingDocModal, setViewingDocModal] = useState({
+    isOpen: false,
+    initialDocType: 'btech'
+  });
 
   // Local override state to instantly reflect decision changes in the modal UI
   const [localAppOverride, setLocalAppOverride] = useState(null);
@@ -228,72 +231,10 @@ export default function ApplicationDetailModal({
   };
 
   const handleOpenCertificate = (certType) => {
-    if (!currentApp) return;
-    const name = currentApp.full_name || 'Candidate';
-    const appId = currentApp.application_id || currentApp.id || 'MSIT-APP';
-
-    let certObj = null;
-    if (certType === 'btech') {
-      certObj = {
-        type: 'btech',
-        title: 'Undergraduate Degree Certificate (B.Tech / B.E.)',
-        subtitle: 'Official Degree Award & Consolidated Transcripts Memo',
-        applicantName: name,
-        applicationId: appId,
-        institution: currentApp.university || 'CMR Institute of Technology / JNTU Hyderabad',
-        department: currentApp.department || 'Computer Science & Engineering (CSE)',
-        qualification: `${currentApp.ug_degree || 'B.Tech / B.E.'} in ${currentApp.department || 'Computer Science & Engineering'}`,
-        score: currentApp.cgpa ? `${currentApp.cgpa} (${currentApp.grading_scale || 'Percentage'})` : '7.5 CGPA',
-        passingYear: currentApp.passing_year || '2026',
-        fileName: 'BTech_Degree_Certificate.pdf'
-      };
-    } else if (certType === '10th') {
-      certObj = {
-        type: '10th',
-        title: 'Class 10 / Secondary School Certificate (SSC)',
-        subtitle: 'Board Examination Cumulative Marksheet & Memo',
-        applicantName: name,
-        applicationId: appId,
-        institution: 'Board of Secondary Education',
-        department: 'General Secondary Curriculum',
-        qualification: 'Secondary School Certificate (Class 10 / SSC)',
-        score: currentApp.class10_score ? `${currentApp.class10_score} (${currentApp.class10_score_type || 'Percentage'})` : '85.0%',
-        passingYear: '2020',
-        fileName: 'Class10_SSC_Marksheet_Memo.pdf'
-      };
-    } else if (certType === '12th') {
-      certObj = {
-        type: '12th',
-        title: 'Class 12 / Intermediate Examination Marks Memo',
-        subtitle: 'Board of Intermediate Education Official Marks Memo',
-        applicantName: name,
-        applicationId: appId,
-        institution: 'Board of Intermediate Education',
-        department: 'Mathematics, Physics, Chemistry (MPC)',
-        qualification: currentApp.inter_pathway || 'Class 12 / Intermediate',
-        score: currentApp.inter_score ? `${currentApp.inter_score} (${currentApp.inter_score_type || 'Percentage'})` : '87.0%',
-        passingYear: '2022',
-        fileName: 'Class12_Intermediate_MarksMemo.pdf'
-      };
-    } else if (certType === 'gr') {
-      certObj = {
-        type: 'gr',
-        title: 'Official Graduate Record Examination (GRE) Score Report',
-        subtitle: 'ETS Official Test-Taker Scorecard & National Ranking',
-        applicantName: name,
-        applicationId: appId,
-        institution: 'Educational Testing Service (ETS) / National Testing Agency',
-        department: 'General GRE / Quantitative & Verbal Reasoning',
-        qualification: currentApp.entrance_exam_status || 'GRE General Test',
-        score: currentApp.gre_score ? `GRE Score: ${currentApp.gre_score}` : (currentApp.gate_score ? `GATE Score: ${currentApp.gate_score}` : 'Official Scorecard'),
-        passingYear: currentApp.gre_year || currentApp.gate_year || '2025',
-        fileName: 'Official_GRE_Scorecard.pdf'
-      };
-    }
-
-    if (certObj) {
-      setViewingCertificate(certObj);
-    }
+    setViewingDocModal({
+      isOpen: true,
+      initialDocType: certType || 'btech'
+    });
   };
 
   const handleAddNote = async (e) => {
@@ -752,6 +693,21 @@ export default function ApplicationDetailModal({
                         />
                       </div>
                       <div className="info-item">
+                        <span className="label">Relationship:</span>
+                        <select
+                          className="edit-input"
+                          value={editForm.parent_relationship}
+                          onChange={e => setEditForm(p => ({ ...p, parent_relationship: e.target.value }))}
+                        >
+                          <option value="Father">Father</option>
+                          <option value="Mother">Mother</option>
+                          <option value="Guardian">Guardian</option>
+                          <option value="Spouse">Spouse</option>
+                          <option value="Sibling">Sibling</option>
+                          <option value="Other">Other</option>
+                        </select>
+                      </div>
+                      <div className="info-item">
                         <span className="label">Contact Number:</span>
                         <input
                           type="tel"
@@ -767,6 +723,10 @@ export default function ApplicationDetailModal({
                       <div className="info-item">
                         <span className="label">Contact Name:</span>
                         <span className="value font-medium">{currentApp.parent_name || 'N/A'}</span>
+                      </div>
+                      <div className="info-item">
+                        <span className="label">Relationship:</span>
+                        <span className="value font-medium">{currentApp.parent_relationship || 'N/A'}</span>
                       </div>
                       <div className="info-item">
                         <span className="label">Contact Number:</span>
@@ -1130,18 +1090,15 @@ export default function ApplicationDetailModal({
                               >
                                 Review / Update
                               </button>
-                              {doc.file_url && (
-                                <a
-                                  href={doc.file_url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="btn btn-sm"
-                                  style={{ background: '#f1f5f9', border: '1px solid #cbd5e1', padding: '0.25rem 0.5rem', fontSize: '0.78rem', textDecoration: 'none', color: '#0f172a' }}
-                                  title="Open document securely in new tab"
-                                >
-                                  View File
-                                </a>
-                              )}
+                              <button
+                                type="button"
+                                className="btn btn-sm"
+                                style={{ background: '#eff6ff', border: '1px solid #bfdbfe', padding: '0.25rem 0.65rem', fontSize: '0.78rem', color: '#1d4ed8', fontWeight: 600, cursor: 'pointer', borderRadius: '4px' }}
+                                onClick={() => handleOpenCertificate(doc.id || doc.doc_type || 'btech')}
+                                title="View uploaded candidate document directly"
+                              >
+                                View File
+                              </button>
                             </div>
                           </td>
                         </tr>
@@ -1482,11 +1439,12 @@ export default function ApplicationDetailModal({
         onUpdateStatus={handleUpdateDocStatus}
       />
 
-      {/* Certificate Viewer Modal */}
+      {/* Certificate & Document Viewer Modal */}
       <CertificateModal
-        isOpen={!!viewingCertificate}
-        onClose={() => setViewingCertificate(null)}
-        certificate={viewingCertificate}
+        isOpen={viewingDocModal.isOpen}
+        onClose={() => setViewingDocModal({ isOpen: false, initialDocType: 'btech' })}
+        application={currentApp}
+        initialDocType={viewingDocModal.initialDocType}
       />
     </>
   );

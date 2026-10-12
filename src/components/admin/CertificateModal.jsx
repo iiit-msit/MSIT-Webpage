@@ -1,310 +1,251 @@
-import React from 'react';
-import { XIcon, DownloadIcon, ExternalLinkIcon, CheckCircleIcon, AwardIcon, FileTextIcon } from '../Icons';
+import React, { useState, useEffect, useMemo } from 'react';
+import { 
+  XIcon, 
+  DownloadIcon, 
+  ExternalLinkIcon, 
+  CheckCircleIcon, 
+  AwardIcon, 
+  FileTextIcon, 
+  GraduationCapIcon, 
+  BriefcaseIcon,
+  EyeIcon,
+  RefreshCwIcon
+} from '../Icons';
+import { StatusBadge } from './StatusBadge';
+import { 
+  extractAllApplicationDocuments, 
+  getDocumentFromIndexedDB, 
+  openDocumentInNewTab, 
+  downloadDocument,
+  generateOfficialPdfDataUrl,
+  dataUrlToBlob
+} from '../../utils/documentStore';
 
 /**
- * Generate a standalone, print-ready HTML certificate for opening in a new browser tab.
- */
-export function openCertificateInNewTab(cert) {
-  if (!cert) return;
-
-  const html = `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>${cert.title} - ${cert.applicantName}</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800;900&family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;1,400&display=swap" rel="stylesheet">
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      background: #0f172a;
-      font-family: 'Inter', -apple-system, sans-serif;
-      color: #1e293b;
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: 2.5rem 1rem;
-    }
-    .print-bar {
-      position: fixed;
-      top: 1rem;
-      right: 1.5rem;
-      z-index: 100;
-      display: flex;
-      gap: 0.75rem;
-    }
-    .print-btn {
-      background: #1e40af;
-      color: #fff;
-      border: none;
-      padding: 0.6rem 1.2rem;
-      font-size: 0.88rem;
-      font-weight: 600;
-      border-radius: 6px;
-      cursor: pointer;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-      transition: background 0.15s ease;
-      display: inline-flex;
-      align-items: center;
-      gap: 0.4rem;
-    }
-    .print-btn:hover { background: #1d4ed8; }
-    .cert-container {
-      width: 100%;
-      max-width: 960px;
-      background: #ffffff;
-      border-radius: 8px;
-      padding: 3rem;
-      box-shadow: 0 20px 40px rgba(0,0,0,0.4);
-      position: relative;
-      margin: auto;
-    }
-    .cert-frame {
-      border: 8px solid #1e3a8a;
-      outline: 2px solid #d97706;
-      outline-offset: -14px;
-      padding: 3rem 2.5rem;
-      position: relative;
-      background: radial-gradient(circle at center, #ffffff 60%, #f8fafc 100%);
-    }
-    .cert-header {
-      text-align: center;
-      margin-bottom: 2rem;
-    }
-    .cert-issuer {
-      font-family: 'Cinzel', serif;
-      font-size: 1.25rem;
-      font-weight: 800;
-      letter-spacing: 0.12em;
-      color: #1e3a8a;
-      text-transform: uppercase;
-      margin-bottom: 0.35rem;
-    }
-    .cert-board {
-      font-size: 0.85rem;
-      font-weight: 600;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      color: #64748b;
-      margin-bottom: 1.25rem;
-    }
-    .cert-title {
-      font-family: 'Cinzel', serif;
-      font-size: 1.85rem;
-      font-weight: 900;
-      color: #0f172a;
-      letter-spacing: 0.05em;
-      text-transform: uppercase;
-      border-bottom: 2px solid #d97706;
-      display: inline-block;
-      padding-bottom: 0.4rem;
-      margin-bottom: 1.5rem;
-    }
-    .cert-body {
-      text-align: center;
-      margin: 1.5rem 0;
-      line-height: 1.7;
-    }
-    .cert-intro {
-      font-size: 0.95rem;
-      color: #64748b;
-      font-style: italic;
-      margin-bottom: 0.75rem;
-    }
-    .candidate-name {
-      font-family: 'Playfair Display', Georgia, serif;
-      font-size: 2.2rem;
-      font-weight: 700;
-      color: #1e3a8a;
-      letter-spacing: 0.03em;
-      margin: 0.5rem 0 1rem;
-      text-decoration: underline;
-      text-decoration-color: #d97706;
-      text-underline-offset: 6px;
-    }
-    .cert-details-grid {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 1.25rem;
-      background: #f8fafc;
-      border: 1px solid #e2e8f0;
-      border-radius: 6px;
-      padding: 1.5rem;
-      margin: 2rem auto;
-      max-width: 680px;
-      text-align: left;
-    }
-    .detail-item { display: flex; flex-direction: column; gap: 0.2rem; }
-    .detail-label { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; }
-    .detail-val { font-size: 0.95rem; font-weight: 600; color: #0f172a; }
-    .score-badge {
-      font-size: 1.15rem;
-      font-weight: 800;
-      color: #1e40af;
-      background: #dbeafe;
-      padding: 0.25rem 0.6rem;
-      border-radius: 4px;
-      display: inline-block;
-      width: fit-content;
-    }
-    .cert-footer {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-end;
-      margin-top: 3rem;
-      padding-top: 1.5rem;
-    }
-    .seal-wrap {
-      text-align: center;
-    }
-    .seal-circle {
-      width: 100px;
-      height: 100px;
-      border-radius: 50%;
-      border: 3px double #d97706;
-      background: radial-gradient(circle, #fef3c7 40%, #fde68a 100%);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      box-shadow: 0 4px 10px rgba(217, 119, 6, 0.25);
-      margin: 0 auto 0.4rem;
-      color: #92400e;
-      font-size: 0.65rem;
-      font-weight: 800;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      padding: 0.4rem;
-      text-align: center;
-    }
-    .sig-block {
-      text-align: center;
-      width: 180px;
-    }
-    .sig-line {
-      border-bottom: 1.5px solid #0f172a;
-      height: 35px;
-      margin-bottom: 0.35rem;
-    }
-    .sig-title {
-      font-size: 0.75rem;
-      font-weight: 700;
-      color: #475569;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-    }
-    .verified-banner {
-      margin-top: 2rem;
-      text-align: center;
-      font-size: 0.72rem;
-      color: #059669;
-      font-weight: 700;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      background: #ecfdf5;
-      padding: 0.4rem 1rem;
-      border-radius: 4px;
-      border: 1px solid #a7f3d0;
-    }
-    @media print {
-      body { background: #ffffff; padding: 0; }
-      .print-bar { display: none !important; }
-      .cert-container { box-shadow: none; max-width: 100%; border-radius: 0; padding: 0; }
-      .cert-frame { border: 6px solid #1e3a8a; }
-    }
-  </style>
-</head>
-<body>
-  <div class="print-bar">
-    <button class="print-btn" onclick="window.print()">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
-      Print / Save as PDF
-    </button>
-  </div>
-
-  <div class="cert-container">
-    <div class="cert-frame">
-      <div class="cert-header">
-        <div class="cert-issuer">${cert.institution || 'ACCREDITED ACADEMIC INSTITUTION'}</div>
-        <div class="cert-board">${cert.subtitle || 'OFFICIAL VERIFIED RECORD'}</div>
-        <h1 class="cert-title">${cert.title}</h1>
-      </div>
-
-      <div class="cert-body">
-        <p class="cert-intro">This is to officially certify the academic credentials of</p>
-        <div class="candidate-name">${cert.applicantName}</div>
-        <p style="font-size: 0.95rem; color: #475569; max-width: 600px; margin: 0 auto;">
-          having met all prerequisites and evaluation thresholds with verified submission under Reference ID <strong>${cert.applicationId}</strong>.
-        </p>
-
-        <div class="cert-details-grid">
-          <div class="detail-item">
-            <span class="detail-label">Application ID</span>
-            <span class="detail-val">${cert.applicationId}</span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-label">Verified Score / Grade</span>
-            <span class="score-badge">${cert.score || '7.5 CGPA'}</span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-label">Qualification / Stream</span>
-            <span class="detail-val">${cert.qualification || cert.department || 'Computer Science & Engineering'}</span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-label">Academic Year / Cycle</span>
-            <span class="detail-val">${cert.passingYear || '2026'} (January 2027 Intake)</span>
-          </div>
-          <div class="detail-item" style="grid-column: span 2;">
-            <span class="detail-label">Awarding Institution / Board</span>
-            <span class="detail-val">${cert.institution || 'Recognized University / Examination Board'}</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="cert-footer">
-        <div class="sig-block">
-          <div class="sig-line"></div>
-          <div class="sig-title">Registrar</div>
-        </div>
-        <div class="seal-wrap">
-          <div class="seal-circle">
-            ★ VERIFIED ★<br>OFFICIAL<br>SEAL
-          </div>
-          <span style="font-size: 0.65rem; color: #78716c; font-weight: 600;">AUTHENTICATED</span>
-        </div>
-        <div class="sig-block">
-          <div class="sig-line"></div>
-          <div class="sig-title">Controller of Exams</div>
-        </div>
-      </div>
-
-      <div class="verified-banner">
-        ✓ Digital Credential Authenticated for MSIT January 2027 Admissions
-      </div>
-    </div>
-  </div>
-</body>
-</html>`;
-
-  const blob = new Blob([html], { type: 'text/html' });
-  const url = URL.createObjectURL(blob);
-  window.open(url, '_blank');
-}
-
-/**
- * Interactive Certificate Viewer Modal component.
+ * Direct Document & Certificate Viewer Modal.
+ * Replaces synthetic pre-built UI templates with direct viewing of candidate uploaded documents
+ * (PDFs rendered natively in iframe viewer, images displayed directly, with tabs for all uploaded files).
  */
 export default function CertificateModal({
   isOpen,
   onClose,
-  certificate
+  application = null,
+  initialDocType = 'btech',
+  certificate = null
 }) {
-  if (!isOpen || !certificate) return null;
+  // Normalize candidate application object
+  const activeApp = useMemo(() => {
+    if (application) return application;
+    if (certificate) {
+      return {
+        full_name: certificate.applicantName || 'Candidate',
+        application_id: certificate.applicationId || 'MSIT-APP',
+        ug_degree: certificate.title,
+        cgpa: certificate.score,
+        university: certificate.institution,
+        department: certificate.department,
+        documents: certificate.documents || [
+          {
+            id: certificate.type || 'btech',
+            doc_type: certificate.title || 'Qualifying Degree Certificate',
+            file_name: certificate.fileName || 'BTech_Degree_Certificate.pdf',
+            file_url: certificate.fileUrl || '',
+            status: 'Verified'
+          }
+        ]
+      };
+    }
+    return null;
+  }, [application, certificate]);
+
+  // Extract all attached documents for this candidate
+  const allDocs = useMemo(() => {
+    if (!activeApp) return [];
+    return extractAllApplicationDocuments(activeApp);
+  }, [activeApp]);
+
+  // Determine active document ID
+  const [selectedDocId, setSelectedDocId] = useState(() => {
+    if (initialDocType) return initialDocType;
+    if (certificate?.type) return certificate.type;
+    return 'btech';
+  });
+
+  // Keep selectedDocId synchronized when modal opens or initialDocType changes
+  useEffect(() => {
+    if (!isOpen) return;
+    const requested = initialDocType || certificate?.type || 'btech';
+    // Match requested by id or key
+    const match = allDocs.find(d => 
+      d.id === requested || 
+      d.key === requested || 
+      (d.docType && d.docType.toLowerCase().includes(requested.toLowerCase()))
+    );
+    if (match) {
+      setSelectedDocId(match.id);
+    } else if (allDocs.length > 0) {
+      setSelectedDocId(allDocs[0].id);
+    }
+  }, [isOpen, initialDocType, certificate, allDocs]);
+
+  // Currently active document
+  const activeDoc = useMemo(() => {
+    if (!allDocs || allDocs.length === 0) return null;
+    return allDocs.find(d => d.id === selectedDocId) || allDocs[0];
+  }, [allDocs, selectedDocId]);
+
+  // Asynchronously resolve file URL (checks dataUrl, IndexedDB, local files, or fallback official PDF)
+  const [resolvedUrl, setResolvedUrl] = useState('');
+  const [isLoadingFile, setIsLoadingFile] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen || !activeDoc) {
+      setResolvedUrl('');
+      return;
+    }
+
+    let isCancelled = false;
+    let localBlobUrl = null;
+    setIsLoadingFile(true);
+
+    async function resolveFileUrl() {
+      const cleanFileName = (activeDoc.fileName || '').trim();
+
+      // 1. Check if file is available in /documents/ (e.g. MSIT_Admission_Notification_2026-27.pdf)
+      if (cleanFileName === 'MSIT_Admission_Notification_2026-27.pdf' || cleanFileName === 'MSIT_Student_Laptop_Specification_2027_updated.pdf') {
+        if (!isCancelled) {
+          setResolvedUrl(`/documents/${cleanFileName}`);
+          setIsLoadingFile(false);
+        }
+        return;
+      }
+
+      // 2. Direct valid Data URL -> convert to Blob URL for clean browser PDF rendering
+      const rawUrl = activeDoc.fileUrl || activeDoc.file_url || activeDoc.dataUrl;
+      if (rawUrl && rawUrl.startsWith('data:')) {
+        const blob = dataUrlToBlob(rawUrl);
+        if (blob) {
+          localBlobUrl = URL.createObjectURL(blob);
+          if (!isCancelled) {
+            setResolvedUrl(localBlobUrl);
+            setIsLoadingFile(false);
+          }
+          return;
+        }
+      }
+
+      // 3. Local path (e.g. /documents/...)
+      if (rawUrl && (rawUrl.startsWith('/') || rawUrl.startsWith('./'))) {
+        if (!isCancelled) {
+          setResolvedUrl(rawUrl);
+          setIsLoadingFile(false);
+        }
+        return;
+      }
+
+      // 4. Valid external URL (excluding non-existent Supabase storage bucket URLs)
+      const isBrokenSupabase = typeof rawUrl === 'string' && rawUrl.includes('supabase.co/storage') && rawUrl.includes('application-documents');
+      if (rawUrl && !isBrokenSupabase && (rawUrl.startsWith('http://') || rawUrl.startsWith('https://'))) {
+        if (!isCancelled) {
+          setResolvedUrl(rawUrl);
+          setIsLoadingFile(false);
+        }
+        return;
+      }
+
+      // 5. Query IndexedDB for candidate file by id, docKey, or fileName
+      try {
+        const appId = activeApp?.application_id || activeApp?.id || 'app';
+        const docKey = activeDoc.key || activeDoc.id;
+        const candidates = [
+          `file_${activeDoc.id}`,
+          `doc_${appId}_${docKey}`,
+          `doc_${appId}_${activeDoc.id}`,
+          `doc_${appId}_${cleanFileName}`,
+          `file_${cleanFileName}`,
+          `doc_${appId}_${(activeDoc.docType || '').replace(/[^a-zA-Z0-9]/g, '_').toLowerCase()}`
+        ];
+
+        for (const k of candidates) {
+          const fromDb = await getDocumentFromIndexedDB(k);
+          if (fromDb && fromDb.dataUrl) {
+            const blob = dataUrlToBlob(fromDb.dataUrl);
+            if (blob) {
+              localBlobUrl = URL.createObjectURL(blob);
+              if (!isCancelled) {
+                setResolvedUrl(localBlobUrl);
+                setIsLoadingFile(false);
+              }
+              return;
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('[MSIT] IndexedDB document lookup warning:', e);
+      }
+
+      // 6. Fallback: generate an official valid %PDF-1.4 Data URL for this record
+      const fallbackPdf = generateOfficialPdfDataUrl({
+        docType: activeDoc.docType || 'Official Academic Document',
+        fileName: activeDoc.fileName || `${activeDoc.id}.pdf`,
+        applicantName: activeApp?.full_name || 'Candidate',
+        applicationId: activeApp?.application_id || activeApp?.id || 'MSIT-APP',
+        institution: activeApp?.university || activeDoc.institution || '',
+        score: activeDoc.score || (activeDoc.id === 'btech' ? activeApp?.cgpa : null),
+        date: activeDoc.uploadedAt ? new Date(activeDoc.uploadedAt).toLocaleDateString() : ''
+      });
+
+      const blob = dataUrlToBlob(fallbackPdf);
+      if (blob) {
+        localBlobUrl = URL.createObjectURL(blob);
+        if (!isCancelled) {
+          setResolvedUrl(localBlobUrl);
+          setIsLoadingFile(false);
+        }
+      } else {
+        if (!isCancelled) {
+          setResolvedUrl(fallbackPdf);
+          setIsLoadingFile(false);
+        }
+      }
+    }
+
+    resolveFileUrl();
+
+    return () => {
+      isCancelled = true;
+      if (localBlobUrl) {
+        URL.revokeObjectURL(localBlobUrl);
+      }
+    };
+  }, [isOpen, activeDoc, activeApp]);
+
+
+  if (!isOpen || !activeApp) return null;
+
+  const applicantName = activeApp.full_name || activeApp.fullName || 'Candidate';
+  const applicationId = activeApp.application_id || activeApp.id || 'MSIT-APP';
+  const fileName = activeDoc?.fileName || 'Document.pdf';
+  const isImage = (fileName.match(/\.(jpeg|jpg|png|webp|gif)$/i) || (resolvedUrl && resolvedUrl.startsWith('data:image/')));
 
   const handleOpenExternal = () => {
-    openCertificateInNewTab(certificate);
+    if (resolvedUrl) {
+      openDocumentInNewTab(resolvedUrl, fileName);
+    }
+  };
+
+  const handleDownload = () => {
+    if (resolvedUrl) {
+      downloadDocument(resolvedUrl, fileName);
+    }
+  };
+
+  // Helper icon for document category tabs
+  const getDocIcon = (docId) => {
+    if (docId === 'btech' || docId === 'degreeCert') return <GraduationCapIcon size={16} />;
+    if (docId === 'gr') return <AwardIcon size={16} />;
+    if (docId === 'cv') return <BriefcaseIcon size={16} />;
+    return <FileTextIcon size={16} />;
   };
 
   return (
@@ -312,47 +253,155 @@ export default function CertificateModal({
       <div 
         className="admin-modal-box cert-viewer-modal" 
         onClick={e => e.stopPropagation()}
-        style={{ maxWidth: '820px', width: '92%', maxHeight: '90vh', overflowY: 'auto' }}
+        style={{ 
+          maxWidth: '960px', 
+          width: '94%', 
+          maxHeight: '92vh', 
+          display: 'flex', 
+          flexDirection: 'column',
+          boxShadow: '0 25px 50px -12px rgba(15, 23, 42, 0.35)',
+          borderRadius: '12px',
+          overflow: 'hidden'
+        }}
       >
-        <div className="modal-header">
+        {/* Modal Header */}
+        <div className="modal-header" style={{ padding: '1.1rem 1.5rem', background: '#ffffff', borderBottom: '1px solid #e2e8f0' }}>
           <div className="modal-title-wrap">
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <AwardIcon size={22} className="text-primary" />
-              <h3 style={{ margin: 0 }}>{certificate.title}</h3>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+              <span style={{ 
+                background: '#eff6ff', 
+                color: '#1d4ed8', 
+                padding: '0.35rem', 
+                borderRadius: '8px', 
+                display: 'inline-flex' 
+              }}>
+                <EyeIcon size={20} />
+              </span>
+              <h3 style={{ margin: 0, fontSize: '1.2rem', color: '#0f172a', fontWeight: 700 }}>
+                {activeDoc?.docType || 'Application Document Viewer'}
+              </h3>
             </div>
-            <span className="modal-sub">
-              Candidate: <strong>{certificate.applicantName}</strong> • Application ID: <strong>{certificate.applicationId}</strong>
+            <span className="modal-sub" style={{ marginTop: '0.25rem', display: 'block', fontSize: '0.82rem', color: '#64748b' }}>
+              Candidate: <strong style={{ color: '#0f172a' }}>{applicantName}</strong> • Application ID: <strong style={{ color: '#1d4ed8' }}>{applicationId}</strong>
             </span>
           </div>
-          <button type="button" className="modal-close-btn" onClick={onClose}>
+          <button type="button" className="modal-close-btn" onClick={onClose} title="Close Viewer">
             <XIcon size={20} />
           </button>
         </div>
 
-        <div className="modal-body" style={{ padding: '1.25rem' }}>
-          {/* Top Info Bar */}
+        {/* Top All-Documents Switcher Bar */}
+        <div style={{
+          background: '#f8fafc',
+          borderBottom: '1px solid #e2e8f0',
+          padding: '0.65rem 1.25rem',
+          display: 'flex',
+          gap: '0.5rem',
+          overflowX: 'auto',
+          alignItems: 'center'
+        }}>
+          <span style={{ 
+            fontSize: '0.74rem', 
+            fontWeight: 700, 
+            color: '#64748b', 
+            textTransform: 'uppercase', 
+            letterSpacing: '0.05em',
+            marginRight: '0.25rem',
+            whiteSpace: 'nowrap'
+          }}>
+            Uploaded Files ({allDocs.length}):
+          </span>
+
+          {allDocs.map((doc) => {
+            const isSelected = doc.id === activeDoc?.id;
+            return (
+              <button
+                key={doc.id}
+                type="button"
+                onClick={() => setSelectedDocId(doc.id)}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.45rem',
+                  padding: '0.4rem 0.85rem',
+                  borderRadius: '20px',
+                  fontSize: '0.8rem',
+                  fontWeight: isSelected ? 600 : 500,
+                  border: isSelected ? '1.5px solid #2563eb' : '1px solid #cbd5e1',
+                  background: isSelected ? '#ffffff' : '#f1f5f9',
+                  color: isSelected ? '#1d4ed8' : '#334155',
+                  boxShadow: isSelected ? '0 2px 4px rgba(37,99,235,0.12)' : 'none',
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                {getDocIcon(doc.id)}
+                <span>{doc.docType.split('(')[0].trim()}</span>
+                {doc.status && (
+                  <span style={{
+                    fontSize: '0.68rem',
+                    padding: '0.1rem 0.4rem',
+                    borderRadius: '10px',
+                    background: doc.status === 'Verified' ? '#dcfce7' : '#fef3c7',
+                    color: doc.status === 'Verified' ? '#166534' : '#92400e',
+                    fontWeight: 600
+                  }}>
+                    {doc.status}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Modal Body: Active Document Action Bar + Direct File Canvas */}
+        <div className="modal-body" style={{ padding: '1rem 1.25rem', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column' }}>
+          
+          {/* Active Document Details & Action Bar */}
           <div style={{
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
-            background: '#f8fafc',
+            background: '#ffffff',
             border: '1px solid #e2e8f0',
-            borderRadius: '6px',
+            borderRadius: '8px',
             padding: '0.75rem 1rem',
-            marginBottom: '1.25rem',
+            marginBottom: '1rem',
             flexWrap: 'wrap',
-            gap: '0.5rem'
+            gap: '0.75rem',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
           }}>
             <div>
-              <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600, display: 'block' }}>FILE RECORD</span>
-              <strong style={{ fontSize: '0.88rem', color: '#0f172a' }}>{certificate.fileName || 'Verified_Academic_Memo.pdf'}</strong>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.15rem' }}>
+                <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>
+                  FILE RECORD
+                </span>
+                <span style={{
+                  fontSize: '0.7rem',
+                  fontWeight: 600,
+                  padding: '0.1rem 0.45rem',
+                  borderRadius: '4px',
+                  background: isImage ? '#fdf2f8' : '#eff6ff',
+                  color: isImage ? '#be185d' : '#1d4ed8'
+                }}>
+                  {isImage ? 'IMAGE' : 'PDF DOCUMENT'}
+                </span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                <strong style={{ fontSize: '0.92rem', color: '#0f172a' }}>{fileName}</strong>
+                <span style={{ fontSize: '0.78rem', color: '#64748b' }}>• {activeDoc?.fileSize || '1.5 MB'}</span>
+              </div>
             </div>
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
+
+            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
               <button
                 type="button"
                 className="btn btn-secondary btn-sm"
                 onClick={handleOpenExternal}
-                style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
+                disabled={isLoadingFile || !resolvedUrl}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', fontWeight: 600 }}
+                title="Open uploaded file directly in a new browser tab"
               >
                 <ExternalLinkIcon size={15} />
                 <span>Open in New Tab</span>
@@ -360,161 +409,109 @@ export default function CertificateModal({
               <button
                 type="button"
                 className="btn btn-primary btn-sm"
-                onClick={handleOpenExternal}
-                style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
+                onClick={handleDownload}
+                disabled={isLoadingFile || !resolvedUrl}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', fontWeight: 600 }}
+                title="Download original file to your device"
               >
                 <DownloadIcon size={15} />
-                <span>Print / Save PDF</span>
+                <span>Download File</span>
               </button>
             </div>
           </div>
 
-          {/* Certificate Frame Preview */}
+          {/* Document Content Canvas (Direct PDF / Image View) */}
           <div style={{
-            border: '4px solid #1e3a8a',
-            outline: '1.5px solid #d97706',
-            outlineOffset: '-7px',
-            padding: '2rem 1.75rem',
-            borderRadius: '6px',
-            background: 'radial-gradient(circle at center, #ffffff 60%, #f8fafc 100%)',
-            boxShadow: '0 4px 16px rgba(0,0,0,0.06)'
+            flex: 1,
+            minHeight: '480px',
+            background: '#334155',
+            borderRadius: '8px',
+            overflow: 'hidden',
+            border: '1px solid #cbd5e1',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            position: 'relative'
           }}>
-            <div style={{ textAlign: 'center', marginBottom: '1.25rem' }}>
+            {isLoadingFile ? (
+              <div style={{ textAlign: 'center', color: '#ffffff', padding: '3rem' }}>
+                <RefreshCwIcon size={32} className="spinning" />
+                <p style={{ marginTop: '0.75rem', fontSize: '0.9rem' }}>Loading candidate document...</p>
+              </div>
+            ) : isImage ? (
               <div style={{
-                fontFamily: 'serif',
-                fontSize: '1rem',
-                fontWeight: 800,
-                color: '#1e3a8a',
-                letterSpacing: '0.1em',
-                textTransform: 'uppercase'
-              }}>
-                {certificate.institution || 'ACCREDITED EXAMINATION BOARD / UNIVERSITY'}
-              </div>
-              <div style={{ fontSize: '0.75rem', color: '#64748b', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
-                {certificate.subtitle || 'OFFICIAL VERIFIED ACADEMIC CREDENTIAL'}
-              </div>
-              <h2 style={{
-                fontSize: '1.35rem',
-                fontWeight: 800,
-                color: '#0f172a',
-                margin: '0.75rem 0 0.5rem',
-                borderBottom: '2px solid #d97706',
-                display: 'inline-block',
-                paddingBottom: '0.25rem'
-              }}>
-                {certificate.title}
-              </h2>
-            </div>
-
-            <div style={{ textAlign: 'center', margin: '1rem 0' }}>
-              <p style={{ fontSize: '0.85rem', color: '#64748b', fontStyle: 'italic', margin: 0 }}>
-                This credential certifies the academic achievements of
-              </p>
-              <h3 style={{
-                fontSize: '1.65rem',
-                color: '#1e3a8a',
-                margin: '0.4rem 0 0.8rem',
-                fontWeight: 700,
-                textDecoration: 'underline',
-                textDecorationColor: '#d97706',
-                textUnderlineOffset: '4px'
-              }}>
-                {certificate.applicantName}
-              </h3>
-
-              {/* Data Grid */}
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(2, 1fr)',
-                gap: '0.85rem',
-                background: '#ffffff',
-                border: '1px solid #e2e8f0',
-                borderRadius: '6px',
-                padding: '1rem',
-                maxWidth: '560px',
-                margin: '1rem auto',
-                textAlign: 'left'
-              }}>
-                <div>
-                  <span style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>Application ID</span>
-                  <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#0f172a' }}>{certificate.applicationId}</div>
-                </div>
-                <div>
-                  <span style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>Verified Score</span>
-                  <div>
-                    <span style={{
-                      fontSize: '0.95rem',
-                      fontWeight: 800,
-                      color: '#1e40af',
-                      background: '#dbeafe',
-                      padding: '0.15rem 0.5rem',
-                      borderRadius: '4px',
-                      display: 'inline-block'
-                    }}>
-                      {certificate.score || '7.5 CGPA'}
-                    </span>
-                  </div>
-                </div>
-                <div>
-                  <span style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>Branch / Stream</span>
-                  <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#0f172a' }}>{certificate.qualification || certificate.department || 'Computer Science & Engineering'}</div>
-                </div>
-                <div>
-                  <span style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>Passing Year / Cycle</span>
-                  <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#0f172a' }}>{certificate.passingYear || '2026'}</div>
-                </div>
-                <div style={{ gridColumn: 'span 2' }}>
-                  <span style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>Institution / Board</span>
-                  <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#0f172a' }}>{certificate.institution}</div>
-                </div>
-              </div>
-            </div>
-
-            {/* Bottom Stamps */}
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              marginTop: '1.5rem',
-              paddingTop: '1rem',
-              borderTop: '1px dashed #cbd5e1'
-            }}>
-              <div style={{ textAlign: 'center', width: '130px' }}>
-                <div style={{ borderBottom: '1px solid #0f172a', height: '25px', marginBottom: '0.2rem' }}></div>
-                <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Registrar</span>
-              </div>
-              <div style={{
-                border: '2px double #d97706',
-                borderRadius: '50%',
-                width: '65px',
-                height: '65px',
+                width: '100%',
+                height: '100%',
                 display: 'flex',
-                flexDirection: 'column',
                 alignItems: 'center',
                 justifyContent: 'center',
-                background: '#fef3c7',
-                color: '#92400e',
-                fontSize: '0.55rem',
-                fontWeight: 800,
-                textAlign: 'center'
+                padding: '1rem',
+                background: '#1e293b'
               }}>
-                ★ SEAL ★<br />VERIFIED
+                <img
+                  src={resolvedUrl}
+                  alt={fileName}
+                  style={{
+                    maxWidth: '100%',
+                    maxHeight: '560px',
+                    objectFit: 'contain',
+                    borderRadius: '4px',
+                    boxShadow: '0 10px 25px rgba(0,0,0,0.4)'
+                  }}
+                />
               </div>
-              <div style={{ textAlign: 'center', width: '130px' }}>
-                <div style={{ borderBottom: '1px solid #0f172a', height: '25px', marginBottom: '0.2rem' }}></div>
-                <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Controller of Exams</span>
+            ) : resolvedUrl ? (
+              <object
+                data={resolvedUrl}
+                type="application/pdf"
+                style={{
+                  width: '100%',
+                  height: '560px',
+                  border: 'none',
+                  background: '#525659'
+                }}
+              >
+                <iframe
+                  src={resolvedUrl}
+                  title={fileName}
+                  style={{
+                    width: '100%',
+                    height: '560px',
+                    border: 'none',
+                    background: '#525659'
+                  }}
+                />
+              </object>
+            ) : (
+              <div style={{ textAlign: 'center', color: '#94a3b8', padding: '3rem' }}>
+                <FileTextIcon size={40} />
+                <p style={{ marginTop: '0.75rem', fontSize: '0.9rem' }}>Document file not available for preview.</p>
               </div>
-            </div>
+            )}
           </div>
-        </div>
 
-        <div className="modal-footer" style={{ padding: '0.85rem 1.25rem', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
-          <button type="button" className="btn btn-secondary" onClick={onClose}>
-            Close Window
-          </button>
-          <button type="button" className="btn btn-primary" onClick={handleOpenExternal}>
-            Open Full Certificate in New Tab
-          </button>
+          {/* Footer Close Bar */}
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginTop: '1rem',
+            paddingTop: '0.75rem',
+            borderTop: '1px solid #f1f5f9'
+          }}>
+            <span style={{ fontSize: '0.8rem', color: '#64748b' }}>
+              Viewing uploaded credential for <strong>{activeDoc?.docType}</strong>
+            </span>
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              onClick={onClose}
+              style={{ padding: '0.45rem 1.25rem', fontWeight: 600 }}
+            >
+              Close Window
+            </button>
+          </div>
+
         </div>
       </div>
     </div>

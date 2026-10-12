@@ -60,6 +60,20 @@ export default function KnowAboutMSITPage({ onBack, onGoToSignIn }) {
     }
   }, [navigate]);
 
+  // Mobile navigation drawer state
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+
+  // Close mobile nav on resize above breakpoint
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth > 900) {
+        setMobileNavOpen(false);
+      }
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   const handleApplyClick = () => {
     if (user) {
       navigate('/programme');
@@ -94,7 +108,7 @@ export default function KnowAboutMSITPage({ onBack, onGoToSignIn }) {
             </button>
           )}
 
-          <a href="#what-is-msit" className="explore-brand-link" aria-label="MSIT Home">
+          <a href="#what-is-msit" className="explore-brand-link" aria-label="MSIT Home" onClick={() => setMobileNavOpen(false)}>
             <img src="/assets/msit-logo.png" alt="MSIT Logo" className="explore-header-logo" width="46" height="46" />
             <div className="explore-brand-text">
               <span className="explore-brand-title">MSIT</span>
@@ -113,7 +127,14 @@ export default function KnowAboutMSITPage({ onBack, onGoToSignIn }) {
         <div className="explore-nav-actions">
           {user ? (
             <div className="explore-auth-user-row">
-              <div className="explore-user-badge" title={`Signed in as ${user.email}`}>
+              <div 
+                className="explore-user-badge" 
+                title={`Signed in as ${displayName} (${user.email})`}
+                onClick={() => setMobileNavOpen(!mobileNavOpen)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setMobileNavOpen(!mobileNavOpen); }}
+              >
                 <span className="explore-user-avatar">{displayName.charAt(0).toUpperCase()}</span>
                 <span className="explore-user-name">{displayName}</span>
               </div>
@@ -122,12 +143,13 @@ export default function KnowAboutMSITPage({ onBack, onGoToSignIn }) {
                 className="btn btn-primary btn-sm explore-dashboard-btn"
                 onClick={() => navigate('/programme')}
               >
-                <span>Student Dashboard</span>
+                <span className="explore-dashboard-label-full">Student Dashboard</span>
+                <span className="explore-dashboard-label-short">Dashboard</span>
                 <ArrowRightIcon size={14} />
               </button>
               <button
                 type="button"
-                className="explore-signout-link"
+                className="explore-signout-link explore-signout-desktop"
                 onClick={handleSignOut}
               >
                 Sign Out
@@ -147,13 +169,128 @@ export default function KnowAboutMSITPage({ onBack, onGoToSignIn }) {
                 className="btn btn-primary btn-sm explore-register-btn"
                 onClick={handleApplyClick}
               >
-                <span>Register Interest / Apply</span>
+                <span className="explore-register-label-full">Register Interest / Apply</span>
+                <span className="explore-register-label-short">Apply</span>
                 <ArrowRightIcon size={14} />
               </button>
             </div>
           )}
+
+          {/* Mobile Menu Hamburger Toggle */}
+          <button
+            type="button"
+            className={`explore-mobile-menu-toggle ${mobileNavOpen ? 'open' : ''}`}
+            aria-expanded={mobileNavOpen}
+            aria-label={mobileNavOpen ? "Close navigation menu" : "Open navigation menu"}
+            onClick={() => setMobileNavOpen(!mobileNavOpen)}
+          >
+            <span></span>
+            <span></span>
+            <span></span>
+          </button>
         </div>
       </header>
+
+      {/* Mobile Drawer Dropdown & Backdrop */}
+      {mobileNavOpen && (
+        <div 
+          className="explore-mobile-backdrop" 
+          onClick={() => setMobileNavOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+      <div className={`explore-mobile-drawer ${mobileNavOpen ? 'open' : ''}`} aria-hidden={!mobileNavOpen}>
+        <div className="explore-mobile-drawer-inner">
+          {user && (
+            <div className="explore-mobile-user-card">
+              <div className="explore-mobile-user-info">
+                <span className="explore-user-avatar large">{displayName.charAt(0).toUpperCase()}</span>
+                <div className="explore-mobile-user-text">
+                  <span className="explore-mobile-user-name">{displayName}</span>
+                  <span className="explore-mobile-user-email">{user.email}</span>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="btn btn-primary btn-sm explore-mobile-action-btn"
+                onClick={() => {
+                  setMobileNavOpen(false);
+                  navigate('/programme');
+                }}
+              >
+                <span>Go to Student Dashboard</span>
+                <ArrowRightIcon size={14} />
+              </button>
+            </div>
+          )}
+
+          <nav className="explore-mobile-inpage-nav" aria-label="Mobile Navigation Links">
+            <a 
+              href="#what-is-msit" 
+              onClick={() => setMobileNavOpen(false)}
+            >
+              Overview
+            </a>
+            <a 
+              href="#t-shaped-curriculum" 
+              onClick={() => setMobileNavOpen(false)}
+            >
+              Curriculum
+            </a>
+            <a 
+              href="#campus-life" 
+              onClick={() => setMobileNavOpen(false)}
+            >
+              Campus Life
+            </a>
+            <a 
+              href="#admission-journey" 
+              onClick={() => setMobileNavOpen(false)}
+            >
+              Admissions
+            </a>
+          </nav>
+
+          <div className="explore-mobile-drawer-footer">
+            {user ? (
+              <button
+                type="button"
+                className="explore-mobile-signout-btn"
+                onClick={() => {
+                  setMobileNavOpen(false);
+                  handleSignOut();
+                }}
+              >
+                Sign Out
+              </button>
+            ) : (
+              <div className="explore-mobile-guest-buttons">
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => {
+                    setMobileNavOpen(false);
+                    setShowAuthModal(true);
+                  }}
+                >
+                  Sign In
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-primary btn-sm"
+                  onClick={() => {
+                    setMobileNavOpen(false);
+                    handleApplyClick();
+                  }}
+                >
+                  <span>Register Interest / Apply</span>
+                  <ArrowRightIcon size={14} />
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
 
       {/* Main Public Content */}
       <main className="explore-main-content">

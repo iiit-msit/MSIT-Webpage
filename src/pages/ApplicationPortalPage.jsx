@@ -26,6 +26,7 @@ import {
 import { 
   APPLICATION_CONFIG, 
   INITIAL_APPLICATION_STATE, 
+  PARENT_RELATIONSHIP_OPTIONS,
   INTER_PATHWAY_OPTIONS,
   UG_DEGREE_OPTIONS, 
   DEPARTMENT_OPTIONS, 
@@ -48,7 +49,9 @@ import {
   updateStudentApplication,
   generateApplicationId
 } from '../services/applicationService';
+import { openDocumentInNewTab } from '../utils/documentStore';
 import { getStudentDisplayName } from '../utils/userUtils';
+import PrintableApplicationDocument from '../components/PrintableApplicationDocument';
 
 // Stepper Step Metadata (8 Sections)
 const FORM_SECTIONS = [
@@ -534,6 +537,10 @@ export default function ApplicationPortalPage() {
         errs.parentName = 'Contact Name is required';
       }
 
+      if (!formData.parentRelationship || !formData.parentRelationship.trim()) {
+        errs.parentRelationship = 'Relationship is required';
+      }
+
       if (!formData.altPhone.trim()) {
         errs.altPhone = 'Contact Number is required';
       } else if (!phoneRegex.test(formData.altPhone.replace(/\s+/g, ''))) {
@@ -869,18 +876,18 @@ export default function ApplicationPortalPage() {
 
             return (
               <div key={item.key} className="success-doc-row">
-                <div className="success-doc-info">
+                <div className="success-doc-info" style={{ minWidth: 0, flex: 1 }}>
                   {isUploaded ? (
-                    <CheckCircleIcon size={20} className="text-success" />
+                    <CheckCircleIcon size={20} className="text-success" style={{ flexShrink: 0, marginTop: '2px' }} />
                   ) : (
-                    <span style={{ width: 20, height: 20, borderRadius: '50%', background: '#fee2e2', color: '#dc2626', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 'bold' }}>!</span>
+                    <span style={{ width: 20, height: 20, minWidth: 20, borderRadius: '50%', background: '#fee2e2', color: '#dc2626', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 'bold', flexShrink: 0, marginTop: '2px' }}>!</span>
                   )}
-                  <div>
-                    <div className="success-doc-name">{item.title}</div>
-                    <div className="success-doc-meta">
+                  <div style={{ minWidth: 0, flex: 1, overflow: 'hidden' }}>
+                    <div className="success-doc-name" style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}>{item.title}</div>
+                    <div className="success-doc-meta" style={{ wordBreak: 'break-all', overflowWrap: 'break-word' }}>
                       {isUploaded ? (
                         <span>
-                          <strong style={{ color: '#0b2a6b' }}>{fileName}</strong>
+                          <strong style={{ color: '#0b2a6b', wordBreak: 'break-all', overflowWrap: 'break-word' }}>{fileName}</strong>
                           {fileSize ? ` • ${fileSize}` : ''}
                         </span>
                       ) : (
@@ -892,7 +899,7 @@ export default function ApplicationPortalPage() {
                   </div>
                 </div>
 
-                <div className="success-doc-actions">
+                <div className="success-doc-actions" style={{ flexShrink: 0, alignSelf: 'flex-start' }}>
                   <span className={`doc-status-badge ${isUploaded ? 'status-verified' : 'status-pending'}`} style={{
                     fontSize: '0.74rem',
                     fontWeight: '700',
@@ -950,24 +957,46 @@ export default function ApplicationPortalPage() {
                 )}
               </div>
             </div>
-            {portalMode !== 'view' && (
-              <div>
-                <label className="doc-replace-btn" htmlFor={`file-input-${docKey}`}>
-                  Replace
-                </label>
-                <input
-                  id={`file-input-${docKey}`}
-                  type="file"
-                  accept={accept}
-                  className="doc-file-input"
-                  onChange={(e) => {
-                    if (e.target.files && e.target.files[0]) {
-                      handleFileUpload(e.target.files[0], docKey, docTitle);
-                    }
+            <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+              {(uploadedDoc.fileUrl || uploadedDoc.file_url || uploadedDoc.dataUrl) && (
+                <button
+                  type="button"
+                  className="btn btn-sm"
+                  style={{
+                    background: '#eff6ff',
+                    color: '#1d4ed8',
+                    border: '1px solid #bfdbfe',
+                    padding: '0.25rem 0.6rem',
+                    fontSize: '0.78rem',
+                    fontWeight: 600,
+                    borderRadius: '4px',
+                    cursor: 'pointer'
                   }}
-                />
-              </div>
-            )}
+                  onClick={() => openDocumentInNewTab(uploadedDoc.fileUrl || uploadedDoc.file_url || uploadedDoc.dataUrl, uploadedDoc.fileName || uploadedDoc.file_name)}
+                  title="Preview uploaded document"
+                >
+                  View File
+                </button>
+              )}
+              {portalMode !== 'view' && (
+                <div>
+                  <label className="doc-replace-btn" htmlFor={`file-input-${docKey}`}>
+                    Replace
+                  </label>
+                  <input
+                    id={`file-input-${docKey}`}
+                    type="file"
+                    accept={accept}
+                    className="doc-file-input"
+                    onChange={(e) => {
+                      if (e.target.files && e.target.files[0]) {
+                        handleFileUpload(e.target.files[0], docKey, docTitle);
+                      }
+                    }}
+                  />
+                </div>
+              )}
+            </div>
           </div>
         ) : (
           <div className="doc-dropzone-row">
@@ -1014,7 +1043,7 @@ export default function ApplicationPortalPage() {
   if (portalMode === 'view' && formData.isSubmitted) {
     return (
       <div className="single-app-wrapper">
-        <header className="single-app-header">
+        <header className="single-app-header no-print">
           <div className="container single-app-header-inner">
             <div className="single-app-brand">
               <img src="/assets/msit-logo.png" alt="MSIT Logo" className="single-app-logo" />
@@ -1026,7 +1055,7 @@ export default function ApplicationPortalPage() {
             <div className="single-app-controls">
               <button 
                 type="button" 
-                className="btn btn-secondary" 
+                className="btn btn-secondary no-print" 
                 onClick={() => navigate('/programme')}
               >
                 ← Back to Dashboard
@@ -1035,9 +1064,9 @@ export default function ApplicationPortalPage() {
           </div>
         </header>
 
-        <div className="multi-section-app-container">
+        <div className="multi-section-app-container no-print">
           {/* Status Alert Banner */}
-          <div className="app-view-banner">
+          <div className="app-view-banner no-print">
             <InfoIcon size={24} />
             <div>
               <h4 style={{ margin: '0 0 0.25rem 0', fontWeight: '800' }}>
@@ -1057,15 +1086,26 @@ export default function ApplicationPortalPage() {
                 <h3 className="form-section-title">{formData.fullName}</h3>
                 <p className="form-section-desc">Application Ref: {formData.applicationId || serverApp?.application_id} • Cohort: {APPLICATION_CONFIG.cohort}</p>
               </div>
-              <button
-                type="button"
-                className="btn btn-primary"
-                onClick={() => handleEditApplication(1)}
-                style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.88rem' }}
-              >
-                <EditIcon size={15} />
-                <span>{(formData.status === 'Declined' || formData.status === 'Rejected') ? 'Apply Now (Edit & Reapply)' : 'Edit Application'}</span>
-              </button>
+              <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  className="btn btn-secondary no-print"
+                  onClick={() => window.print()}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.88rem' }}
+                >
+                  <DownloadIcon size={15} />
+                  <span>Print Summary</span>
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-primary no-print"
+                  onClick={() => handleEditApplication(1)}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.88rem' }}
+                >
+                  <EditIcon size={15} />
+                  <span>{(formData.status === 'Declined' || formData.status === 'Rejected') ? 'Apply Now (Edit & Reapply)' : 'Edit Application'}</span>
+                </button>
+              </div>
             </div>
 
             {/* Section 1 & 2 Summary */}
@@ -1080,6 +1120,7 @@ export default function ApplicationPortalPage() {
                 <div className="review-item"><span className="review-item-label">Date of Birth</span><span className="review-item-val">{formData.dob || 'Not specified'}</span></div>
                 <div className="review-item" style={{ gridColumn: '1 / -1' }}><span className="review-item-label">Residential Address</span><span className="review-item-val">{formData.address || 'Not specified'}</span></div>
                 <div className="review-item"><span className="review-item-label">Contact Name</span><span className="review-item-val">{formData.parentName || 'Not specified'}</span></div>
+                <div className="review-item"><span className="review-item-label">Relationship</span><span className="review-item-val">{formData.parentRelationship || 'Not specified'}</span></div>
                 <div className="review-item"><span className="review-item-label">Contact Number</span><span className="review-item-val">{formData.altPhone || 'Not specified'}</span></div>
               </div>
             </div>
@@ -1142,10 +1183,10 @@ export default function ApplicationPortalPage() {
               </div>
             </div>
 
-            <div style={{ marginTop: '2.5rem', display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
+            <div className="no-print" style={{ marginTop: '2.5rem', display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
               <button 
                 type="button" 
-                className="btn btn-primary" 
+                className="btn btn-primary no-print" 
                 onClick={() => handleEditApplication(1)}
                 style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', padding: '0.8rem 1.5rem' }}
               >
@@ -1155,7 +1196,7 @@ export default function ApplicationPortalPage() {
 
               <button 
                 type="button" 
-                className="btn btn-secondary" 
+                className="btn btn-secondary no-print" 
                 onClick={() => navigate('/programme')}
               >
                 Back to Student Dashboard
@@ -1163,7 +1204,7 @@ export default function ApplicationPortalPage() {
 
               <button 
                 type="button" 
-                className="btn btn-secondary" 
+                className="btn btn-secondary no-print" 
                 onClick={() => window.print()}
                 style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
               >
@@ -1173,6 +1214,9 @@ export default function ApplicationPortalPage() {
             </div>
           </div>
         </div>
+
+        {/* Dedicated Official Printable Document for Print / Save PDF */}
+        <PrintableApplicationDocument formData={formData} serverApp={serverApp} />
       </div>
     );
   }
@@ -1181,7 +1225,7 @@ export default function ApplicationPortalPage() {
   if (portalMode === 'success') {
     return (
       <div className="single-app-wrapper">
-        <header className="single-app-header">
+        <header className="single-app-header no-print">
           <div className="container single-app-header-inner">
             <div className="single-app-brand">
               <img src="/assets/msit-logo.png" alt="MSIT Logo" className="single-app-logo" />
@@ -1193,7 +1237,7 @@ export default function ApplicationPortalPage() {
             <div className="single-app-controls">
               <button 
                 type="button" 
-                className="btn btn-secondary" 
+                className="btn btn-secondary no-print" 
                 onClick={() => navigate('/programme')}
               >
                 ← Back to Dashboard
@@ -1202,7 +1246,7 @@ export default function ApplicationPortalPage() {
           </div>
         </header>
 
-        <div className="success-page-layout">
+        <div className="success-page-layout no-print">
           {/* Main Hero Confirmation Card */}
           <div className="success-hero-card">
             <div className="success-hero-badge">
@@ -1220,10 +1264,10 @@ export default function ApplicationPortalPage() {
             </p>
 
             {/* Prominent Action Toolbar */}
-            <div className="success-action-toolbar">
+            <div className="success-action-toolbar no-print">
               <button
                 type="button"
-                className="btn btn-primary"
+                className="btn btn-primary no-print"
                 onClick={() => navigate('/programme')}
                 style={{ padding: '0.75rem 1.6rem', fontSize: '0.95rem' }}
               >
@@ -1233,7 +1277,7 @@ export default function ApplicationPortalPage() {
 
               <button
                 type="button"
-                className="btn-edit-action"
+                className="btn-edit-action no-print"
                 onClick={() => handleEditApplication(1)}
                 title="Edit any field or replace uploaded memos"
               >
@@ -1243,7 +1287,7 @@ export default function ApplicationPortalPage() {
 
               <button
                 type="button"
-                className="btn btn-secondary"
+                className="btn btn-secondary no-print"
                 onClick={() => window.print()}
                 style={{ padding: '0.75rem 1.3rem', fontSize: '0.92rem' }}
               >
@@ -1359,7 +1403,7 @@ export default function ApplicationPortalPage() {
               </div>
               <button
                 type="button"
-                className="btn btn-primary"
+                className="btn btn-primary no-print"
                 onClick={() => handleEditApplication(1)}
                 style={{ whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
               >
@@ -1369,6 +1413,9 @@ export default function ApplicationPortalPage() {
             </div>
           </div>
         </div>
+
+        {/* Dedicated Official Printable Document for Print / Save PDF */}
+        <PrintableApplicationDocument formData={formData} serverApp={serverApp} />
       </div>
     );
   }
@@ -1377,7 +1424,7 @@ export default function ApplicationPortalPage() {
   return (
     <div className="single-app-wrapper">
       {/* Top Application Bar */}
-      <header className="single-app-header">
+      <header className="single-app-header no-print">
         <div className="container single-app-header-inner">
           <div className="single-app-brand">
             <img src="/assets/msit-logo.png" alt="MSIT Logo" className="single-app-logo" />
@@ -1433,7 +1480,7 @@ export default function ApplicationPortalPage() {
         </div>
       </header>
 
-      <div className="multi-section-app-container">
+      <div className="multi-section-app-container no-print">
         {/* Banner if in edit mode */}
         {portalMode === 'edit' && (
           <div className="app-edit-banner" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
@@ -1636,6 +1683,26 @@ export default function ApplicationPortalPage() {
                   placeholder="Enter Contact Name"
                 />
                 {errors.parentName && <span className="field-error-text">{errors.parentName}</span>}
+              </div>
+
+              {/* Relationship Field */}
+              <div className="form-field-group">
+                <div className="field-label-row">
+                  <label className="field-label" htmlFor="field-parentRelationship">Relationship</label>
+                  <span className="field-badge-required">Required</span>
+                </div>
+                <select
+                  id="field-parentRelationship"
+                  className={`app-form-select ${errors.parentRelationship ? 'has-error' : ''}`}
+                  value={formData.parentRelationship}
+                  onChange={(e) => handleFieldChange('parentRelationship', e.target.value)}
+                >
+                  <option value="">Select Relationship</option>
+                  {PARENT_RELATIONSHIP_OPTIONS.map((rel) => (
+                    <option key={rel} value={rel}>{rel}</option>
+                  ))}
+                </select>
+                {errors.parentRelationship && <span className="field-error-text">{errors.parentRelationship}</span>}
               </div>
 
               {/* Contact Number Field */}
@@ -2506,6 +2573,7 @@ export default function ApplicationPortalPage() {
               </div>
               <div className="review-details-grid">
                 <div className="review-item"><span className="review-item-label">Contact Name</span><span className="review-item-val">{formData.parentName || '—'}</span></div>
+                <div className="review-item"><span className="review-item-label">Relationship</span><span className="review-item-val">{formData.parentRelationship || '—'}</span></div>
                 <div className="review-item"><span className="review-item-label">Contact Number</span><span className="review-item-val">{formData.altPhone || '—'}</span></div>
               </div>
             </div>
@@ -2738,6 +2806,9 @@ export default function ApplicationPortalPage() {
           </div>
         )}
       </div>
+
+      {/* Dedicated Official Printable Document for Print / Save PDF */}
+      <PrintableApplicationDocument formData={formData} serverApp={serverApp} />
     </div>
   );
 }

@@ -95,7 +95,10 @@ export const INITIAL_APPLICATION_STATE = {
 export const PARENT_RELATIONSHIP_OPTIONS = [
   'Father',
   'Mother',
-  'Other / Emergency Contact'
+  'Guardian',
+  'Spouse',
+  'Sibling',
+  'Other'
 ];
 
 export const INTER_PATHWAY_OPTIONS = [

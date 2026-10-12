@@ -47,74 +47,19 @@ export default function AdminDashboardPage({ activeTab: initialTab = 'overview' 
   const [detailModalOpen, setDetailModalOpen] = useState(false);
 
   // Certificate Viewer Modal State
-  const [viewingCertificate, setViewingCertificate] = useState(null);
+  // Certificate & Document Viewer Modal State
+  const [viewingDocModal, setViewingDocModal] = useState({
+    isOpen: false,
+    application: null,
+    initialDocType: 'btech'
+  });
 
   const handleOpenCertificate = (app, certType) => {
-    let certObj = null;
-    const name = app.full_name || 'Candidate';
-    const appId = app.application_id || app.id || 'MSIT-APP';
-
-    if (certType === 'btech') {
-      certObj = {
-        type: 'btech',
-        title: `${app.ug_degree || 'Qualifying Degree'} Certificate (16-Year Education)`,
-        subtitle: 'Official Degree Award & Consolidated Transcripts Memo',
-        applicantName: name,
-        applicationId: appId,
-        institution: app.university || 'CMR Institute of Technology / JNTU Hyderabad',
-        department: app.department || 'Computer Science & Engineering (CSE)',
-        qualification: `${app.ug_degree || 'B.Tech / B.E.'} in ${app.department || 'Computer Science & Engineering'}`,
-        score: app.cgpa ? `${app.cgpa} (${app.grading_scale || 'Percentage'})` : '7.5 CGPA',
-        passingYear: app.passing_year || '2026',
-        fileName: 'BTech_Degree_Certificate.pdf'
-      };
-    } else if (certType === '10th') {
-      certObj = {
-        type: '10th',
-        title: 'Class 10 / Secondary School Certificate (SSC)',
-        subtitle: 'Board Examination Cumulative Marksheet & Memo',
-        applicantName: name,
-        applicationId: appId,
-        institution: 'Board of Secondary Education',
-        department: 'General Secondary Curriculum',
-        qualification: 'Secondary School Certificate (Class 10 / SSC)',
-        score: app.class10_score ? `${app.class10_score} (${app.class10_score_type || 'Percentage'})` : '85.0%',
-        passingYear: '2020',
-        fileName: 'Class10_SSC_Marksheet_Memo.pdf'
-      };
-    } else if (certType === '12th') {
-      certObj = {
-        type: '12th',
-        title: 'Class 12 / Intermediate Examination Marks Memo',
-        subtitle: 'Board of Intermediate Education Official Marks Memo',
-        applicantName: name,
-        applicationId: appId,
-        institution: 'Board of Intermediate Education',
-        department: 'Mathematics, Physics, Chemistry (MPC)',
-        qualification: app.inter_pathway || 'Class 12 / Intermediate',
-        score: app.inter_score ? `${app.inter_score} (${app.inter_score_type || 'Percentage'})` : '87.0%',
-        passingYear: '2022',
-        fileName: 'Class12_Intermediate_MarksMemo.pdf'
-      };
-    } else if (certType === 'gr') {
-      certObj = {
-        type: 'gr',
-        title: 'Official Graduate Record Examination (GRE) Score Report',
-        subtitle: 'ETS Official Test-Taker Scorecard & National Ranking',
-        applicantName: name,
-        applicationId: appId,
-        institution: 'Educational Testing Service (ETS) / National Testing Agency',
-        department: 'General GRE / Quantitative & Verbal Reasoning',
-        qualification: app.entrance_exam_status || 'GRE General Test',
-        score: app.gre_score ? `GRE Score: ${app.gre_score}` : (app.gate_score ? `GATE Score: ${app.gate_score}` : 'Official Scorecard'),
-        passingYear: app.gre_year || app.gate_year || '2025',
-        fileName: 'Official_GRE_Scorecard.pdf'
-      };
-    }
-
-    if (certObj) {
-      setViewingCertificate(certObj);
-    }
+    setViewingDocModal({
+      isOpen: true,
+      application: app,
+      initialDocType: certType || 'btech'
+    });
   };
 
   // Filters & Search State
@@ -1585,11 +1530,12 @@ CREATE TABLE IF NOT EXISTS public.application_status_history (...);`}
         onApplicationUpdated={handleApplicationUpdated}
       />
 
-      {/* Certificate Viewer Modal */}
+      {/* Certificate & Document Viewer Modal */}
       <CertificateModal
-        isOpen={!!viewingCertificate}
-        onClose={() => setViewingCertificate(null)}
-        certificate={viewingCertificate}
+        isOpen={viewingDocModal.isOpen}
+        onClose={() => setViewingDocModal({ isOpen: false, application: null, initialDocType: 'btech' })}
+        application={viewingDocModal.application}
+        initialDocType={viewingDocModal.initialDocType}
       />
 
     </div>

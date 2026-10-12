@@ -697,6 +697,39 @@ export async function fetchAllApplications() {
 }
 
 /**
+ * Check if an application is currently in the Document Review queue.
+ * Only applications that have been explicitly moved to review (e.g. by clicking
+ * "Move to Review" in the admin console) belong in Document Review.
+ * All other submissions remain visible as applications only.
+ */
+export function isApplicationInDocumentReview(app) {
+  if (!app) return false;
+  // Terminal or un-reviewed application statuses do not belong in Document Review
+  if (['Accepted', 'Declined', 'Rejected', 'Submitted', 'New', 'Draft'].includes(app.status)) {
+    return false;
+  }
+  // Applications scheduled for interview or PGEE exam have progressed past initial document review
+  if ([
+    'Interview Scheduled',
+    'Shortlisted for Interview',
+    'Scheduled for MSIT PGEE Exam',
+    'MSIT PGEE Exam Required',
+    'Awaiting MSIT PGEE Result',
+    'Onboarded',
+    'Enrolled'
+  ].includes(app.status)) {
+    return false;
+  }
+  // Must be explicitly moved to review (status 'Under Review' or flagged)
+  return (
+    app.status === 'Under Review' ||
+    app.status === 'Under Document Review' ||
+    Boolean(app.in_document_review) ||
+    Boolean(app.moved_to_review)
+  );
+}
+
+/**
  * Calculate dynamic statistics from application list.
  *
  * @param {Array} applications
@@ -713,12 +746,7 @@ export function calculateDashboardMetrics(applications = []) {
     a.status === 'MSIT PGEE Exam Required' || 
     a.status === 'Awaiting MSIT PGEE Result'
   ).length;
-  const documentsPending = applications.filter(a => 
-    a.status === 'Documents Pending' || 
-    a.status === 'Additional Information Required' ||
-    a.document_status === 'Pending Review' || 
-    a.document_status === 'Rejected'
-  ).length;
+  const documentsPending = applications.filter(isApplicationInDocumentReview).length;
   const accepted = applications.filter(a => a.status === 'Accepted').length;
   const declined = applications.filter(a => a.status === 'Declined' || a.status === 'Rejected').length;
 

@@ -26,7 +26,8 @@ import {
   updateApplicationStatus,
   updateApplicationDetails,
   updateApplicationRecord,
-  enrichApplicationRecord
+  enrichApplicationRecord,
+  isApplicationInDocumentReview
 } from '../../services/adminService';
 import { useAdminAuth } from '../../context/AdminAuthContext';
 
@@ -266,6 +267,13 @@ export default function ApplicationDetailModal({
       else if (decisionType === 'Interview') targetStatus = 'Interview Scheduled';
       else if (decisionType === 'PGEE') targetStatus = 'Scheduled for MSIT PGEE Exam';
       else if (decisionType === 'Pending' || decisionType === 'ActionRequired') targetStatus = 'Additional Information Required';
+      else if (decisionType === 'Review') targetStatus = 'Under Review';
+    }
+
+    if (decisionType === 'Review' || targetStatus === 'Under Review') {
+      extraPayload.in_document_review = true;
+      extraPayload.moved_to_review = true;
+      extraPayload.moved_to_review_at = new Date().toISOString();
     }
 
     const res = await updateApplicationStatus(currentApp.application_id, targetStatus, reason, adminEmail, currentApp, extraPayload);
@@ -275,7 +283,11 @@ export default function ApplicationDetailModal({
         onApplicationUpdated(res.updatedApp);
       }
       setHistory(getStatusHistory(currentApp.application_id));
-      setDecisionSuccessMsg(`Application status successfully updated to "${targetStatus}"!`);
+      if (decisionType === 'Review' || targetStatus === 'Under Review') {
+        setDecisionSuccessMsg('Application successfully moved to Document Review queue!');
+      } else {
+        setDecisionSuccessMsg(`Application status successfully updated to "${targetStatus}"!`);
+      }
       setTimeout(() => setDecisionSuccessMsg(null), 4000);
     }
   };
@@ -455,9 +467,10 @@ export default function ApplicationDetailModal({
                       type="button"
                       className="btn btn-sm btn-secondary"
                       onClick={() => handleOpenDecision('Review')}
-                      disabled={currentApp.status === 'Under Review'}
+                      disabled={isApplicationInDocumentReview(currentApp)}
+                      title={isApplicationInDocumentReview(currentApp) ? 'Application is already in Document Review queue' : 'Click to send this application to Document Review queue'}
                     >
-                      {currentApp.status === 'Under Review' ? '✓ In Review' : 'Move to Review'}
+                      {isApplicationInDocumentReview(currentApp) ? '✓ In Review' : 'Move to Review'}
                     </button>
 
                     {/* Request Updates */}

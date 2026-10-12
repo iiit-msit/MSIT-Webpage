@@ -8,6 +8,7 @@ import CertificateModal from '../../components/admin/CertificateModal';
 import { 
   fetchAllApplications, 
   calculateDashboardMetrics, 
+  isApplicationInDocumentReview,
   resetMockData,
   getAdmissionSettings,
   saveAdmissionSettings,
@@ -143,7 +144,21 @@ export default function AdminDashboardPage({ activeTab: initialTab = 'overview' 
   // Calculate Metrics dynamically
   const metrics = useMemo(() => calculateDashboardMetrics(applications), [applications]);
 
-  // Filtered and Sorted Applications
+  // Document Verification Queue Applications (Only applications explicitly moved to review)
+  const documentQueueApplications = useMemo(() => {
+    return applications
+      .filter(isApplicationInDocumentReview)
+      .filter((app) => {
+        if (!searchQuery.trim()) return true;
+        const q = searchQuery.toLowerCase().trim();
+        const matchesName = (app.full_name || '').toLowerCase().includes(q);
+        const matchesEmail = (app.email || '').toLowerCase().includes(q);
+        const matchesId = (app.application_id || '').toLowerCase().includes(q);
+        return matchesName || matchesEmail || matchesId;
+      });
+  }, [applications, searchQuery]);
+
+  // Filtered and Sorted Applications (Everything visible as applications)
   const filteredApplications = useMemo(() => {
     return applications
       .filter((app) => {
@@ -158,7 +173,11 @@ export default function AdminDashboardPage({ activeTab: initialTab = 'overview' 
 
         // Application status filter
         if (statusFilter !== 'ALL') {
-          if (app.status !== statusFilter) return false;
+          if (statusFilter === 'New') {
+            if (app.status !== 'New' && app.status !== 'Submitted' && app.status !== 'Draft' && Boolean(app.status)) return false;
+          } else if (app.status !== statusFilter) {
+            return false;
+          }
         }
 
         // Document status filter
@@ -382,10 +401,9 @@ export default function AdminDashboardPage({ activeTab: initialTab = 'overview' 
                 <div 
                   className="metric-card card-purple clickable"
                   onClick={() => {
-                    setDocFilter('Pending Review');
                     setActiveTab('documents');
                   }}
-                  title="Click to view Document Queue"
+                  title="Click to view Document Verification Queue"
                 >
                   <div className="metric-header">
                     <span className="metric-label">Document Review</span>
@@ -397,7 +415,7 @@ export default function AdminDashboardPage({ activeTab: initialTab = 'overview' 
                     <strong className="metric-value text-purple">{metrics.documentsPending}</strong>
                     <span className="metric-pill purple">{metrics.total > 0 ? Math.round((metrics.documentsPending / metrics.total) * 100) : 0}% queue</span>
                   </div>
-                  <span className="metric-sub">Pending verification / memos</span>
+                  <span className="metric-sub">Applications moved to review</span>
                   <div className="metric-bottom-bar purple" />
                 </div>
 
@@ -924,69 +942,88 @@ export default function AdminDashboardPage({ activeTab: initialTab = 'overview' 
               <div className="admin-content-card">
                 <div className="doc-queue-banner">
                   <p>
-                    Candidates requiring document verification: <strong>{metrics.documentsPending}</strong>.
+                    Candidates requiring document verification: <strong>{documentQueueApplications.length}</strong>.
                     Click "Inspect & Verify" on any candidate to review their individual uploaded files.
                   </p>
                 </div>
 
-                <div className="table-wrapper">
-                  <table className="admin-table">
-                    <thead>
-                      <tr>
-                        <th>Candidate Name</th>
-                        <th>Application ID</th>
-                        <th>Degree / Department</th>
-                        <th>Document Verification State</th>
-                        <th>Documents Attached</th>
-                        <th>Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {applications.map(app => {
-                        const rawDocs = app.documents;
-                        const docs = Array.isArray(rawDocs)
-                          ? rawDocs.filter(Boolean)
-                          : (rawDocs && typeof rawDocs === 'object')
-                            ? Object.values(rawDocs).filter(d => d && typeof d === 'object')
-                            : [];
-                        const verifiedCount = docs.filter(d => d && d.status === 'Verified').length;
-                        return (
-                          <tr key={app.id}>
-                            <td>
-                              <div className="applicant-cell">
-                                <strong>{app.full_name}</strong>
-                                <span className="cell-sub">{app.email}</span>
-                                {app.isMock && <TestDataBadge />}
-                              </div>
-                            </td>
-                            <td><code>{app.application_id}</code></td>
-                            <td>
-                              <span>{app.ug_degree}</span>
-                              <span className="cell-sub">{app.department}</span>
-                            </td>
-                            <td>
-                              <StatusBadge status={app.document_status} type="document" />
-                            </td>
-                            <td>
-                              <span className="doc-count-pill">
-                                {verifiedCount} / {docs.length} Verified
-                              </span>
-                            </td>
-                            <td>
-                              <button
-                                type="button"
-                                className="btn btn-secondary btn-sm"
-                                onClick={() => handleOpenDetail(app)}
-                              >
-                                Inspect & Verify
-                              </button>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
+                {documentQueueApplications.length === 0 ? (
+                  <div className="admin-empty-state" style={{ padding: '3.5rem 1.5rem', textAlign: 'center' }}>
+                    <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>📋</div>
+                    <h3 style={{ fontSize: '1.15rem', color: '#1e293b', marginBottom: '0.5rem', fontWeight: 600 }}>
+                      No Applications in Document Review
+                    </h3>
+                    <p style={{ color: '#64748b', fontSize: '0.9rem', maxWidth: '520px', margin: '0 auto 1.5rem', lineHeight: '1.5' }}>
+                      Only applications that are clicked on <strong>“Move to Review”</strong> go to document review. All other submissions remain visible as applications only in the <strong>Applications</strong> tab.
+                    </p>
+                    <button
+                      type="button"
+                      className="btn btn-primary"
+                      onClick={() => setActiveTab('applications')}
+                    >
+                      View All Applications
+                    </button>
+                  </div>
+                ) : (
+                  <div className="table-wrapper">
+                    <table className="admin-table">
+                      <thead>
+                        <tr>
+                          <th>Candidate Name</th>
+                          <th>Application ID</th>
+                          <th>Degree / Department</th>
+                          <th>Document Verification State</th>
+                          <th>Documents Attached</th>
+                          <th>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {documentQueueApplications.map(app => {
+                          const rawDocs = app.documents;
+                          const docs = Array.isArray(rawDocs)
+                            ? rawDocs.filter(Boolean)
+                            : (rawDocs && typeof rawDocs === 'object')
+                              ? Object.values(rawDocs).filter(d => d && typeof d === 'object')
+                              : [];
+                          const verifiedCount = docs.filter(d => d && d.status === 'Verified').length;
+                          return (
+                            <tr key={app.id}>
+                              <td>
+                                <div className="applicant-cell">
+                                  <strong>{app.full_name}</strong>
+                                  <span className="cell-sub">{app.email}</span>
+                                  {app.isMock && <TestDataBadge />}
+                                </div>
+                              </td>
+                              <td><code>{app.application_id}</code></td>
+                              <td>
+                                <span>{app.ug_degree}</span>
+                                <span className="cell-sub">{app.department}</span>
+                              </td>
+                              <td>
+                                <StatusBadge status={app.document_status} type="document" />
+                              </td>
+                              <td>
+                                <span className="doc-count-pill">
+                                  {verifiedCount} / {docs.length} Verified
+                                </span>
+                              </td>
+                              <td>
+                                <button
+                                  type="button"
+                                  className="btn btn-secondary btn-sm"
+                                  onClick={() => handleOpenDetail(app)}
+                                >
+                                  Inspect & Verify
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
             </div>
           )}

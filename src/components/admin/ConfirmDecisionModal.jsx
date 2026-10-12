@@ -50,6 +50,7 @@ export default function ConfirmDecisionModal({
   const isActionRequired = decisionType === 'ActionRequired' || decisionType === 'Pending';
   const isInterview = decisionType === 'Interview';
   const isPgee = decisionType === 'PGEE';
+  const isReview = decisionType === 'Review';
 
   const handleConfirm = async () => {
     let finalReason = reason.trim();
@@ -101,11 +102,22 @@ export default function ConfirmDecisionModal({
       }
       extraPayload.status = 'Accepted';
       extraPayload.admission_offer = 'Issued';
+    } else if (isReview) {
+      if (!finalReason) {
+        finalReason = 'Moved to Document Review queue by Admissions Committee';
+      }
+      extraPayload.status = 'Under Review';
+      extraPayload.in_document_review = true;
+      extraPayload.moved_to_review = true;
+      extraPayload.moved_to_review_at = new Date().toISOString();
     } else {
       if (!finalReason) {
         finalReason = 'Status moved to Under Review';
       }
       extraPayload.status = 'Under Review';
+      extraPayload.in_document_review = true;
+      extraPayload.moved_to_review = true;
+      extraPayload.moved_to_review_at = new Date().toISOString();
     }
 
     setIsSubmitting(true);
@@ -137,7 +149,7 @@ export default function ConfirmDecisionModal({
               {isPgee && '📝 Schedule MSIT PGEE Exam'}
               {isAccept && 'Accept Application (Admission Offer)'}
               {isDecline && 'Decline Application'}
-              {decisionType === 'Review' && 'Move Application to Under Review'}
+              {isReview && '📋 Move Application to Document Review'}
               {isActionRequired && 'Request Additional Information / Documents'}
             </h3>
             <span className="modal-sub">
@@ -296,7 +308,18 @@ export default function ConfirmDecisionModal({
             </div>
           )}
 
-          {(!isAccept && !isDecline && !isActionRequired && !isInterview && !isPgee) && (
+          {isReview && (
+            <div className="decision-notice-box" style={{ background: '#f5f3ff', border: '1px solid #ddd6fe', color: '#5b21b6', padding: '0.85rem 1rem', borderRadius: '8px', marginBottom: '1.25rem' }}>
+              <p style={{ margin: 0, fontWeight: '600', fontSize: '0.9rem' }}>
+                Move Candidate to Document Review Queue
+              </p>
+              <span style={{ fontSize: '0.82rem', color: '#6d28d9', display: 'block', marginTop: '0.25rem' }}>
+                This candidate's application will now enter the <strong>Documents Review</strong> queue where transcripts, degree certificates, and identification proof can be inspected and verified.
+              </span>
+            </div>
+          )}
+
+          {(!isAccept && !isDecline && !isActionRequired && !isInterview && !isPgee && !isReview) && (
             <p className="modal-description-text">
               Update status for this candidate to <strong>Under Review</strong>.
             </p>
@@ -379,6 +402,8 @@ export default function ConfirmDecisionModal({
               ? 'Confirm & Schedule Interview'
               : isPgee
               ? 'Confirm & Schedule PGEE Exam'
+              : isReview
+              ? 'Confirm Move to Review'
               : `Confirm ${decisionType}`}
           </button>
         </div>

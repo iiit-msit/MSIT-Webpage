@@ -22,7 +22,7 @@ export default function PrintableApplicationDocument({ formData = {}, serverApp 
       formattedSubmissionDate = d.toLocaleDateString('en-IN', {
         day: '2-digit',
         month: 'short',
-        year: 'numeric'
+        Passed: 'numeric'
       });
     }
   } catch {
@@ -101,9 +101,6 @@ export default function PrintableApplicationDocument({ formData = {}, serverApp 
           <div className="print-header-center-col">
             <h1 className="print-institution-title">CONSORTIUM OF INSTITUTIONS OF HIGHER LEARNING (CIHL)</h1>
             <h2 className="print-programme-title">MASTER OF SCIENCE IN INFORMATION TECHNOLOGY (MSIT)</h2>
-            <p className="print-affiliation-line">
-              A Multi-University Program Offered in Collaboration with IIIT Hyderabad, JNTUH, JNTUK, JNTUA, and SVU
-            </p>
             <p className="print-campus-address">
               IIIT Hyderabad Campus, Gachibowli, Hyderabad - 500032, Telangana, India • Website: www.msitprogram.net
             </p>
@@ -190,24 +187,24 @@ export default function PrintableApplicationDocument({ formData = {}, serverApp 
               <tr className="table-header-row">
                 <th style={{ width: '22%' }}>Level / Exam</th>
                 <th style={{ width: '28%' }}>Board / University</th>
-                <th style={{ width: '30%' }}>Discipline / Stream</th>
-                <th style={{ width: '8%', textAlign: 'center' }}>Year</th>
+                <th style={{ width: '35%' }}>Discipline / Stream</th>
+                <th style={{ width: '13%', textAlign: 'center' }}>Passed Out Year</th>
                 <th style={{ width: '12%', textAlign: 'right' }}>Score / Aggregate</th>
               </tr>
             </thead>
             <tbody>
               <tr>
                 <td className="field-name"><strong>Class 10 / Secondary (SSC)</strong></td>
-                <td>Recognized Board</td>
+                <td>{formData.class10School || serverApp?.class10_school || 'Recognized Board'}</td>
                 <td>General Secondary Studies</td>
-                <td className="text-center">—</td>
+                <td className="text-center">{formData.class10Year || serverApp?.class10_year || '—'}</td>
                 <td style={{ textAlign: 'right' }}><strong>{formData.class10Score ? `${formData.class10Score} (${formData.class10ScoreType || '%'})` : 'Recorded'}</strong></td>
               </tr>
               <tr>
                 <td className="field-name"><strong>Class 12 / Higher Secondary</strong></td>
-                <td>Intermediate Board / Technical</td>
+                <td>{formData.interCollege || serverApp?.inter_college || 'Intermediate Board / Technical'}</td>
                 <td>{formData.interPathway || 'Class 12 / Intermediate'}</td>
-                <td className="text-center">—</td>
+                <td className="text-center">{formData.interYear || serverApp?.inter_year || '—'}</td>
                 <td style={{ textAlign: 'right' }}><strong>{formData.interScore ? `${formData.interScore} (${formData.interScoreType || '%'})` : 'Recorded'}</strong></td>
               </tr>
               <tr>
@@ -218,7 +215,7 @@ export default function PrintableApplicationDocument({ formData = {}, serverApp 
                   {formData.branch ? ` - ${formData.branch}` : ''}
                   {formData.specialization ? ` (${formData.specialization})` : ''}
                 </td>
-                <td className="text-center"><strong>{formData.passingYear || '2026'}</strong></td>
+                <td className="text-center"><strong>{formData.passingYear || '-'}</strong></td>
                 <td style={{ textAlign: 'right' }}><strong>{formData.cgpa ? `${formData.cgpa} (${formData.gradingScale ? formData.gradingScale.split(' ')[0] : '%'})` : 'Recorded'}</strong></td>
               </tr>
             </tbody>
@@ -278,35 +275,19 @@ export default function PrintableApplicationDocument({ formData = {}, serverApp 
           <table className="print-data-table print-checklist-table">
             <thead>
               <tr className="table-header-row">
-                <th style={{ width: '6%', textAlign: 'center' }}>#</th>
-                <th style={{ width: '44%' }}>Document Description</th>
-                <th style={{ width: '32%' }}>File Name / Reference on Record</th>
-                <th style={{ width: '18%', textAlign: 'center' }}>Status</th>
+                <th style={{ width: '8%', textAlign: 'center' }}>#</th>
+                <th style={{ width: '92%' }}>Document Description</th>
               </tr>
             </thead>
             <tbody>
-              {documentsList.map((item, idx) => {
-                const isUploaded = !!(item.doc && (item.doc.fileName || item.doc.file_name || item.doc.fileUrl || item.doc.file_url || item.doc.status === 'Uploaded' || item.doc.status === 'Pending'));
-                const fileName = item.doc?.fileName || item.doc?.file_name || (isUploaded ? `${item.title.split('/')[0].trim().replace(/\s+/g, '_')}.pdf` : 'Not uploaded');
-
-                return (
-                  <tr key={idx}>
-                    <td className="text-center">{idx + 1}</td>
-                    <td>
-                      <strong>{item.title}</strong>
-                      {item.required && <span className="doc-req-tag"> *</span>}
-                    </td>
-                    <td className="doc-filename-cell">
-                      {isUploaded ? fileName : <span style={{ color: '#94a3b8' }}>Not uploaded</span>}
-                    </td>
-                    <td className="text-center">
-                      <span className={`doc-tag-print ${isUploaded ? 'tag-verified' : 'tag-missing'}`}>
-                        {isUploaded ? 'Submitted / On File' : (item.required ? 'Pending' : 'Optional')}
-                      </span>
-                    </td>
-                  </tr>
-                );
-              })}
+              {documentsList.map((item, idx) => (
+                <tr key={idx}>
+                  <td className="text-center">{idx + 1}</td>
+                  <td>
+                    <strong>{item.title}</strong>
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
@@ -325,10 +306,6 @@ export default function PrintableApplicationDocument({ formData = {}, serverApp 
               <div className="sig-meta-row">
                 <span className="sig-label">Application Date:</span>
                 <span className="sig-value"><strong>{formattedSubmissionDate}</strong></span>
-              </div>
-              <div className="sig-meta-row" style={{ marginTop: '2px' }}>
-                <span className="sig-label">Place of Filing:</span>
-                <span className="sig-value">_________________________</span>
               </div>
             </div>
 
@@ -351,7 +328,7 @@ export default function PrintableApplicationDocument({ formData = {}, serverApp 
         <footer className="print-official-footer-doc">
           <div className="footer-contact-bar">
             <span><strong>CIHL Admissions Desk:</strong> IIIT Hyderabad Campus, Gachibowli, Hyderabad - 500 032</span>
-            <span><strong>Helpline:</strong> +91 7799834583 • +91 40 6653 1000 | admissions@msitprogram.net</span>
+            <span><strong>Official Query Email:</strong> admissions@msitprogram.net</span>
           </div>
           <div className="footer-disclaimer-bar">
             <span>Official Computer-Generated Acknowledgment • Generated: {printTimestamp}</span>

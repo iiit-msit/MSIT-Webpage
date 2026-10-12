@@ -351,7 +351,7 @@ function cleanseStudentRecord(appRecord, candidateEmail) {
     (appRecord.full_name || appRecord.fullName || '').toLowerCase().includes('sadhvik') ||
     appRecord.application_id === 'MSIT-2027-25754';
 
-  ['dob', 'parent_name', 'alt_phone', 'address', 'class10_score', 'inter_score', 'university'].forEach(k => {
+  ['dob', 'parent_name', 'alt_phone', 'address', 'class10_school', 'class10_year', 'class10_score', 'inter_college', 'inter_year', 'inter_score', 'university'].forEach(k => {
     if (isDummyApplicationVal(appRecord[k])) {
       appRecord[k] = '';
     }
@@ -374,7 +374,11 @@ function cleanseStudentRecord(appRecord, candidateEmail) {
     if (draft.phone && !isDummyApplicationVal(draft.phone)) appRecord.phone = draft.phone;
     if (draft.altPhone && !isDummyApplicationVal(draft.altPhone)) appRecord.alt_phone = draft.altPhone;
     if (draft.address && !isDummyApplicationVal(draft.address)) appRecord.address = draft.address;
+    if (draft.class10School && !isDummyApplicationVal(draft.class10School)) appRecord.class10_school = draft.class10School;
+    if (draft.class10Year && !isDummyApplicationVal(draft.class10Year)) appRecord.class10_year = draft.class10Year;
     if (draft.class10Score && !isDummyApplicationVal(draft.class10Score)) appRecord.class10_score = draft.class10Score;
+    if (draft.interCollege && !isDummyApplicationVal(draft.interCollege)) appRecord.inter_college = draft.interCollege;
+    if (draft.interYear && !isDummyApplicationVal(draft.interYear)) appRecord.inter_year = draft.interYear;
     if (draft.interScore && !isDummyApplicationVal(draft.interScore)) appRecord.inter_score = draft.interScore;
   }
 
@@ -667,8 +671,16 @@ export async function submitStudentApplication(applicationData, authUser = null)
     alt_phone: applicationData.altPhone || '',
 
     // Section 3: Academic Qualifications breakdown
+    class10_school: applicationData.class10School || applicationData.class10_school || '',
+    class10School: applicationData.class10School || applicationData.class10_school || '',
+    class10_year: applicationData.class10Year || applicationData.class10_year || '',
+    class10Year: applicationData.class10Year || applicationData.class10_year || '',
     class10_score: applicationData.class10Score || null,
     class10_score_type: applicationData.class10ScoreType || 'Percentage',
+    inter_college: applicationData.interCollege || applicationData.inter_college || '',
+    interCollege: applicationData.interCollege || applicationData.inter_college || '',
+    inter_year: applicationData.interYear || applicationData.inter_year || '',
+    interYear: applicationData.interYear || applicationData.inter_year || '',
     inter_pathway: applicationData.interPathway || 'Class 12 / Intermediate',
     inter_score: applicationData.interScore || null,
     inter_score_type: applicationData.interScoreType || 'Percentage',
@@ -905,8 +917,16 @@ export async function updateStudentApplication(applicationId, updateData, authUs
     parent_relationship: updateData.parentRelationship || updateData.parent_relationship,
     parent_name: updateData.parentName || updateData.parent_name,
     alt_phone: updateData.altPhone || updateData.alt_phone,
+    class10_school: updateData.class10School || updateData.class10_school || '',
+    class10School: updateData.class10School || updateData.class10_school || '',
+    class10_year: updateData.class10Year || updateData.class10_year || '',
+    class10Year: updateData.class10Year || updateData.class10_year || '',
     class10_score: updateData.class10Score || updateData.class10_score,
     class10_score_type: updateData.class10ScoreType || updateData.class10_score_type,
+    inter_college: updateData.interCollege || updateData.inter_college || '',
+    interCollege: updateData.interCollege || updateData.inter_college || '',
+    inter_year: updateData.interYear || updateData.inter_year || '',
+    interYear: updateData.interYear || updateData.inter_year || '',
     inter_pathway: updateData.interPathway || updateData.inter_pathway,
     inter_score: updateData.interScore || updateData.inter_score,
     inter_score_type: updateData.interScoreType || updateData.inter_score_type,
@@ -1020,7 +1040,7 @@ export async function updateStudentApplication(applicationId, updateData, authUs
         'ug_degree', 'department', 'cgpa', 'passing_year', 'has_experience', 'experience_details',
         'purpose_to_join', 'status', 'document_status', 'cohort', 'updated_at',
         'university', 'grading_scale', 'score_eligibility_note',
-        'class10_score', 'class10_score_type', 'inter_pathway', 'inter_score', 'inter_score_type',
+        'class10_school', 'class10_year', 'class10_score', 'class10_score_type', 'inter_college', 'inter_year', 'inter_pathway', 'inter_score', 'inter_score_type',
         'experience_years', 'experience_months', 'company_name', 'job_role',
         'entrance_exam_status', 'gre_score', 'gre_year', 'gate_score', 'gate_year',
         'cv_url', 'cv_filename', 'statement_text', 'statement_word_count',

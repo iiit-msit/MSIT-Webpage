@@ -61,8 +61,12 @@ CREATE TABLE IF NOT EXISTS public.applications (
     grading_scale TEXT DEFAULT '10.0',
     passing_year TEXT,
     score_eligibility_note TEXT,
+    class10_school TEXT,
+    class10_year TEXT,
     class10_score TEXT,
     class10_score_type TEXT DEFAULT 'Percentage',
+    inter_college TEXT,
+    inter_year TEXT,
     inter_pathway TEXT DEFAULT 'Class 12 / Intermediate',
     inter_score TEXT,
     inter_score_type TEXT DEFAULT 'Percentage',
@@ -115,6 +119,12 @@ CREATE TABLE IF NOT EXISTS public.applications (
     submitted_at TIMESTAMPTZ DEFAULT TIMEZONE('utc'::TEXT, NOW()) NOT NULL,
     updated_at TIMESTAMPTZ DEFAULT TIMEZONE('utc'::TEXT, NOW()) NOT NULL
 );
+
+-- Ensure academic institution & year columns exist on existing databases
+ALTER TABLE public.applications ADD COLUMN IF NOT EXISTS class10_school TEXT;
+ALTER TABLE public.applications ADD COLUMN IF NOT EXISTS inter_college TEXT;
+ALTER TABLE public.applications ADD COLUMN IF NOT EXISTS class10_year TEXT;
+ALTER TABLE public.applications ADD COLUMN IF NOT EXISTS inter_year TEXT;
 
 CREATE INDEX IF NOT EXISTS idx_applications_user_id ON public.applications(user_id);
 CREATE INDEX IF NOT EXISTS idx_applications_email ON public.applications(email);

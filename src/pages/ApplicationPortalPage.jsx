@@ -248,8 +248,12 @@ export default function ApplicationPortalPage() {
             parentRelationship: app.parent_relationship || 'Father',
             parentName: app.parent_name || '',
             altPhone: app.alt_phone || '',
+            class10School: app.class10_school || app.class10School || '',
+            class10Year: app.class10_year || app.class10Year || '',
             class10Score: app.class10_score || '',
             class10ScoreType: app.class10_score_type || 'Percentage',
+            interCollege: app.inter_college || app.interCollege || '',
+            interYear: app.inter_year || app.interYear || '',
             interPathway: app.inter_pathway || 'Class 12 / Intermediate',
             interScore: app.inter_score || '',
             interScoreType: app.inter_score_type || 'Percentage',
@@ -1131,7 +1135,11 @@ export default function ApplicationPortalPage() {
                 <h4 className="review-block-title">3. Academic Qualifications</h4>
               </div>
               <div className="review-details-grid">
+                <div className="review-item"><span className="review-item-label">Class 10 School</span><span className="review-item-val">{formData.class10School || 'Not specified'}</span></div>
+                <div className="review-item"><span className="review-item-label">Class 10 Year</span><span className="review-item-val">{formData.class10Year || 'Not specified'}</span></div>
                 <div className="review-item"><span className="review-item-label">Class 10 Score</span><span className="review-item-val">{formData.class10Score ? `${formData.class10Score} (${formData.class10ScoreType || 'Percentage'})` : 'Not specified'}</span></div>
+                <div className="review-item"><span className="review-item-label">Intermediate College</span><span className="review-item-val">{formData.interCollege || 'Not specified'}</span></div>
+                <div className="review-item"><span className="review-item-label">Intermediate Year</span><span className="review-item-val">{formData.interYear || 'Not specified'}</span></div>
                 <div className="review-item"><span className="review-item-label">Class 12 / Intermediate</span><span className="review-item-val">{formData.interScore ? `${formData.interPathway || 'Class 12'}: ${formData.interScore} (${formData.interScoreType || 'Percentage'})` : 'Not specified'}</span></div>
                 <div className="review-item"><span className="review-item-label">Qualifying Degree</span><span className="review-item-val">{formData.ugDegree || 'Not specified'}</span></div>
                 <div className="review-item"><span className="review-item-label">University / Institution</span><span className="review-item-val">{formData.university || 'Not specified'}</span></div>
@@ -1763,6 +1771,35 @@ export default function ApplicationPortalPage() {
               </h4>
 
               <div className="form-fields-grid" style={{ marginBottom: '1.25rem' }}>
+                <div className="form-field-group" style={{ gridColumn: '1 / -1' }}>
+                  <div className="field-label-row">
+                    <label className="field-label" htmlFor="field-class10School">School Name</label>
+                  </div>
+                  <input
+                    id="field-class10School"
+                    type="text"
+                    className="app-form-input"
+                    value={formData.class10School || ''}
+                    onChange={(e) => handleFieldChange('class10School', e.target.value)}
+                    placeholder="e.g. Hyderabad Public School, Kendriya Vidyalaya, St. Joseph's High School"
+                  />
+                </div>
+
+                <div className="form-field-group">
+                  <div className="field-label-row">
+                    <label className="field-label" htmlFor="field-class10Year">Year of Passing</label>
+                  </div>
+                  <input
+                    id="field-class10Year"
+                    type="text"
+                    className="app-form-input"
+                    value={formData.class10Year || ''}
+                    onChange={(e) => handleFieldChange('class10Year', e.target.value)}
+                    placeholder="e.g. 2020"
+                    maxLength={4}
+                  />
+                </div>
+
                 <div className="form-field-group">
                   <div className="field-label-row">
                     <label className="field-label" htmlFor="field-class10Score">Class 10 / SSC Score</label>
@@ -1812,6 +1849,20 @@ export default function ApplicationPortalPage() {
               </h4>
 
               <div className="form-fields-grid" style={{ marginBottom: '1.25rem' }}>
+                <div className="form-field-group" style={{ gridColumn: '1 / -1' }}>
+                  <div className="field-label-row">
+                    <label className="field-label" htmlFor="field-interCollege">Intermediate College Name</label>
+                  </div>
+                  <input
+                    id="field-interCollege"
+                    type="text"
+                    className="app-form-input"
+                    value={formData.interCollege || ''}
+                    onChange={(e) => handleFieldChange('interCollege', e.target.value)}
+                    placeholder="e.g. Narayana Junior College, Sri Chaitanya Junior College, Government Polytechnic"
+                  />
+                </div>
+
                 <div className="form-field-group">
                   <div className="field-label-row">
                     <label className="field-label" htmlFor="field-interPathway">Educational Pathway</label>
@@ -1827,6 +1878,21 @@ export default function ApplicationPortalPage() {
                       <option key={opt} value={opt}>{opt}</option>
                     ))}
                   </select>
+                </div>
+
+                <div className="form-field-group">
+                  <div className="field-label-row">
+                    <label className="field-label" htmlFor="field-interYear">Year of Passing</label>
+                  </div>
+                  <input
+                    id="field-interYear"
+                    type="text"
+                    className="app-form-input"
+                    value={formData.interYear || ''}
+                    onChange={(e) => handleFieldChange('interYear', e.target.value)}
+                    placeholder="e.g. 2022"
+                    maxLength={4}
+                  />
                 </div>
 
                 <div className="form-field-group">
@@ -2587,7 +2653,11 @@ export default function ApplicationPortalPage() {
                 </button>
               </div>
               <div className="review-details-grid">
+                <div className="review-item"><span className="review-item-label">Class 10 School</span><span className="review-item-val">{formData.class10School || '—'}</span></div>
+                <div className="review-item"><span className="review-item-label">Class 10 Year</span><span className="review-item-val">{formData.class10Year || '—'}</span></div>
                 <div className="review-item"><span className="review-item-label">Class 10 Score</span><span className="review-item-val">{formData.class10Score ? `${formData.class10Score} (${formData.class10ScoreType})` : '—'}</span></div>
+                <div className="review-item"><span className="review-item-label">Intermediate College</span><span className="review-item-val">{formData.interCollege || '—'}</span></div>
+                <div className="review-item"><span className="review-item-label">Intermediate Year</span><span className="review-item-val">{formData.interYear || '—'}</span></div>
                 <div className="review-item"><span className="review-item-label">Class 12 Pathway</span><span className="review-item-val">{formData.interPathway}</span></div>
                 <div className="review-item"><span className="review-item-label">Class 12 Score</span><span className="review-item-val">{formData.interScore ? `${formData.interScore} (${formData.interScoreType})` : '—'}</span></div>
                 <div className="review-item"><span className="review-item-label">Qualifying Degree</span><span className="review-item-val">{formData.ugDegree}</span></div>

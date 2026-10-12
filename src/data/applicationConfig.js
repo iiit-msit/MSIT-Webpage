@@ -30,10 +30,14 @@ export const INITIAL_APPLICATION_STATE = {
 
   // Section 3: Academic Qualifications
   // 3A. Class 10 / SSC
+  class10School: '',
+  class10Year: '',
   class10Score: '',
   class10ScoreType: 'Percentage', // 'Percentage' | 'CGPA'
 
   // 3B. Class 12 / Intermediate
+  interCollege: '',
+  interYear: '',
   interPathway: 'Class 12 / Intermediate', // 'Class 12 / Intermediate' | 'Polytechnic / Diploma' | 'Other Recognized Higher Secondary'
   interScore: '',
   interScoreType: 'Percentage', // 'Percentage' | 'CGPA'

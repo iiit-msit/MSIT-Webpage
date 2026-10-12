@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAdminAuth, isAuthorizedAdminEmail } from '../../context/AdminAuthContext';
-import { MailIcon, LoaderIcon, ArrowRightIcon, ShieldCheckIcon, LockIcon } from '../../components/Icons';
+import { MailIcon, LoaderIcon, ArrowRightIcon, LockIcon } from '../../components/Icons';
 
 export default function AdminLoginPage() {
   const navigate = useNavigate();
-  const { adminUser, isAdmin, requestAdminMagicLink, testAccountEmail } = useAdminAuth();
+  const { adminUser, isAdmin, requestAdminMagicLink } = useAdminAuth();
 
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
@@ -92,11 +92,6 @@ export default function AdminLoginPage() {
     }
   };
 
-  const handleUseTestAccount = () => {
-    setEmail(testAccountEmail);
-    setError('');
-  };
-
   return (
     <div className="admin-login-wrapper">
       <div className="admin-login-card">
@@ -112,17 +107,6 @@ export default function AdminLoginPage() {
             <h2>MSIT Admin Portal</h2>
             <p className="admin-login-sub">Admissions Management System</p>
           </div>
-        </div>
-
-        {/* Temporary Dev Notice Banner */}
-        <div className="admin-dev-notice-banner">
-          <div className="notice-header">
-            <ShieldCheckIcon size={16} />
-            <strong>ADMINISTRATOR PORTAL ACCESS</strong>
-          </div>
-          <p>
-            Authorized administrators with an <code>@msitprogram.net</code> or <code>@getskills.io</code> email can access this console via Supabase Magic Link.
-          </p>
         </div>
 
         {isSent ? (
@@ -165,19 +149,6 @@ export default function AdminLoginPage() {
         ) : (
           <form onSubmit={handleSubmit} className="admin-login-form" noValidate>
             
-            {/* Fast fill shortcut for dev test account */}
-            <div className="test-account-shortcut">
-              <span>Primary Test Account:</span>
-              <button
-                type="button"
-                className="test-account-chip"
-                onClick={handleUseTestAccount}
-                title="Click to fill test email"
-              >
-                {testAccountEmail}
-              </button>
-            </div>
-
             <div className="form-field-group">
               <label htmlFor="adminEmail">Administrator Email Address <span className="req">*</span></label>
               <div className="input-with-icon">

@@ -163,40 +163,6 @@ export default function ProgrammePage() {
 
   return (
     <div className="programme-page-root student-decision-dashboard">
-      {/* Admin Notice Banner if logged in user is admin */}
-      {isAdmin && (
-        <div className="admin-quick-switch-banner" style={{
-          background: '#fffbeb',
-          borderBottom: '1px solid #fef3c7',
-          color: '#92400e',
-          padding: '0.6rem 1rem',
-          fontSize: '0.85rem',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: '1rem',
-          fontWeight: '600'
-        }}>
-          <span>You are logged in with an authorized Administrator account ({user.email}).</span>
-          <button
-            type="button"
-            onClick={() => navigate('/admin/dashboard')}
-            style={{
-              background: '#0b2a6b',
-              color: '#ffffff',
-              border: 'none',
-              padding: '0.3rem 0.85rem',
-              borderRadius: '999px',
-              cursor: 'pointer',
-              fontSize: '0.8rem',
-              fontWeight: '700'
-            }}
-          >
-            Go to Admin Dashboard →
-          </button>
-        </div>
-      )}
-
       {/* ============================================================
           TOP STICKY NAVIGATION GROUP (Header + Subnav pinned together)
           ============================================================ */}
@@ -219,23 +185,6 @@ export default function ProgrammePage() {
             </a>
 
             <div className="programme-header-actions">
-              {isAdmin && (
-                <button
-                  type="button"
-                  className="btn btn-secondary programme-admin-switch-btn"
-                  onClick={() => navigate('/admin/dashboard')}
-                  title="Switch to MSIT Admin Dashboard"
-                  style={{
-                    background: '#0b2a6b',
-                    color: '#ffffff',
-                    fontWeight: '700',
-                    borderColor: '#0b2a6b'
-                  }}
-                >
-                  <span>Admin Console →</span>
-                </button>
-              )}
-
               {user && (
                 <div className="header-student-profile-chip" title={`Authenticated as ${displayName} (${user.email})`}>
                   <span className="student-avatar-initial" aria-hidden="true">

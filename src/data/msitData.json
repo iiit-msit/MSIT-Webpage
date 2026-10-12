@@ -57,9 +57,9 @@
         "title": "Computing Foundations",
         "tag": "Foundations & AI Tools",
         "points": [
-          { "label": "Core Curricula", "desc": "Learning to Learn with AI Tools, Algorithms and Data Structures, Computer Systems." },
-          { "label": "AI-Assisted Engineering", "desc": "Strong emphasis on contemporary AI-assisted software development tools, practices, and workflows." },
-          { "label": "First-Year Milestone", "desc": "Capable of designing and building substantial software systems using modern AI-enabled development pipelines." }
+          { "desc": "Learning to Learn with AI Tools" },
+          { "desc": "Algorithms and Data Structures" },
+          { "desc": "Computer Systems" }
         ]
       },
       {
@@ -67,9 +67,9 @@
         "title": "Research Co-op",
         "tag": "Research Labs & Core AI",
         "points": [
-          { "label": "IIIT-H Lab Co-op", "desc": "Half-time co-op in research laboratories at IIIT Hyderabad, building applied AI and software solutions from deep-tech research." },
-          { "label": "Coursework & Electives", "desc": "Half-time Learning to Learn model: 1 core AI course + 1 elective chosen per student interests and goals." },
-          { "label": "Mentor Contract", "desc": "Electives governed by a 1-on-1 learning contract agreed with a mentor in advance; assessed on defined objectives and deliverables." }
+          { "desc": "Half-time co-op in IIIT Hyderabad research laboratories, working on applied AI solutions." },
+          { "desc": "Coursework includes one core AI course and one elective selected according to student interests." },
+          { "desc": "Electives follow mentor-agreed learning contracts." }
         ]
       },
       {
@@ -77,8 +77,7 @@
         "title": "Venture-Building Studio",
         "tag": "Product & Venture Studio",
         "points": [
-          { "label": "Product & Venture Creation", "desc": "Hands-on development of technology-driven products and scalable ventures in a dedicated venture-building studio." },
-          { "label": "Investor & VC Pitch", "desc": "Pitch finished ventures to early-stage investors and venture capital representatives by semester end." }
+          { "desc": "Develop technology-driven ventures and pitch to early-stage investors." }
         ]
       },
       {
@@ -86,8 +85,7 @@
         "title": "Startup or Industry Co-op",
         "tag": "Venture Launch or Corporate Co-op",
         "points": [
-          { "label": "Startup Pathway", "desc": "Students securing suitable funding continue developing and incubating their startup venture full-time." },
-          { "label": "Industry Co-op Pathway", "desc": "Co-op engagement with an industry partner, delivering substantial corporate technology and AI-driven projects." }
+          { "desc": "Continue a funded startup or undertake a co-op with an industry partner." }
         ]
       }
     ]
@@ -450,12 +448,12 @@
       {
         "id": "faq-1",
         "question": "I come from a non-CS branch (like ECE, EEE, or Mechanical). Will I be able to keep up?",
-        "answer": "Yes. MSIT is intentionally designed to bridge the non-CS divide. The program begins with foundational computing, programming logic, and hands-on mentor support so that students from all engineering backgrounds become confident full-stack engineers."
+        "answer": "Yes. MSIT is intentionally designed to bridge the non-CS divide. The program begins with foundational computing, programming logic, and hands-on mentor support so that students from all engineering backgrounds become confident software engineers."
       },
       {
         "id": "faq-2",
         "question": "Since there are no traditional lectures, who guides me when I get stuck?",
-        "answer": "You are never left alone. Full-time faculty, domain mentors, and teaching associates work alongside you inside the studio every day. Whenever you hit a roadblock, mentors conduct one-on-one walkthroughs and guide your problem-solving process."
+        "answer": "You are never alone in your learning journey. Faculty members, mentors, and teaching assistants are available to guide you. Whenever you face difficulties, they help you understand the concepts, solve problems, and move forward with confidence."
       },
       {
         "id": "faq-3",
@@ -490,7 +488,7 @@
       {
         "id": "faq-9",
         "question": "Do I need to purchase an expensive high-end laptop before joining?",
-        "answer": "Students should have a suitable laptop for programming, data science, and other MSIT coursework, but an expensive high-end configuration is not mandatory. For a new purchase, the recommended configuration is 32 GB RAM and a 1 TB SSD. A dedicated GPU is optional, as larger GPU-intensive workloads can use institute or cloud computing resources. Refer to the **MSIT Student Laptop Specification 2027** for complete minimum, recommended, and high-end configurations."
+        "answer": "Students should have a suitable laptop for programming, data science, and other MSIT coursework, but an expensive high-end configuration is not mandatory. For a new purchase, the recommended configuration is 32 GB RAM and a 1 TB SSD. Refer to the **MSIT Student Laptop Specification 2027** for complete minimum, recommended, and high-end configurations."
       },
       {
         "id": "faq-10",
@@ -500,7 +498,7 @@
       {
         "id": "faq-11",
         "question": "Do students work alone or in collaborative teams?",
-        "answer": "Both. Core conceptual understanding is verified individually to ensure personal mastery, while large system architectures, studio sprints, and practicum projects are built collaboratively in pods using professional Git workflows."
+        "answer": "Students work both independently and in teams. They learn and practise concepts individually to build their understanding. They also work together on projects, share ideas, and solve real-world problems as a team."
       },
       {
         "id": "faq-12",
@@ -510,7 +508,7 @@
       {
         "id": "faq-13",
         "question": "Can prospective students connect with current students or alumni to learn about MSIT?",
-        "answer": "Yes, absolutely. You are strongly encouraged to reach out directly to current MSIT students and alumni on LinkedIn or other professional networks to get firsthand, unfiltered information about their studio experience, daily learning, and career outcomes."
+        "answer": "Yes! Prospective students are encouraged to connect with current MSIT students and alumni on LinkedIn or other professional networks. They can learn about the learning experience, daily activities, and career opportunities after completing the programme."
       },
       {
         "id": "faq-dates-1",
@@ -530,7 +528,7 @@
       {
         "id": "faq-interview-4",
         "question": "What is the interview and counselling process, and when will the dates be announced?",
-        "answer": "The admission process includes three core steps: (1) Apply through the admission portal, (2) Aptitude evaluation via GRE, GATE, or the MSIT Postgraduate Entrance Examination (MSIT PGEE), and (3) One-on-one discussion. The discussion assesses problem-solving skills, computational thinking, and readiness for the programme. Interviews follow the examination in each admission cycle, and the final admit list will be announced on December 20, 2026."
+        "answer": "The admission process has three steps: (1) Apply through the admission portal, (2) Take an aptitude test through GRE, GATE, or MSIT PGEE, and (3) Attend a one-on-one interview. The interview helps us understand your problem-solving skills and readiness for the programme. Interviews take place after the entrance exam in each admission cycle. The final list of selected students will be announced on December 20, 2026."
       }
     ]
   },

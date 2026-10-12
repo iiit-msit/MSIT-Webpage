@@ -52,15 +52,20 @@ export default function ProgrammeOverviewSection({ data }) {
 
                   {sem.points && sem.points.length > 0 ? (
                     <ul className="semester-points-list">
-                      {sem.points.map((pt, pIdx) => (
-                        <li key={pIdx} className="semester-point-item">
-                          <span className="point-bullet" aria-hidden="true">•</span>
-                          <div className="point-text-wrap">
-                            <strong className="point-label">{pt.label}:</strong>{' '}
-                            <span className="point-desc">{pt.desc}</span>
-                          </div>
-                        </li>
-                      ))}
+                      {sem.points.map((pt, pIdx) => {
+                        const isString = typeof pt === 'string';
+                        const label = isString ? null : pt.label;
+                        const desc = isString ? pt : pt.desc;
+                        return (
+                          <li key={pIdx} className="semester-point-item">
+                            <span className="point-bullet" aria-hidden="true">•</span>
+                            <div className="point-text-wrap">
+                              {label && <strong className="point-label">{label}: </strong>}
+                              <span className="point-desc">{desc}</span>
+                            </div>
+                          </li>
+                        );
+                      })}
                     </ul>
                   ) : (
                     <>

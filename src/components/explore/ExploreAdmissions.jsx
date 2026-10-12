@@ -22,8 +22,7 @@ export default function ExploreAdmissions({ onGoToSignIn }) {
           </span>
           <h2>How to Join the MSIT Cohort</h2>
           <p className="section-lead">
-            We follow a structured evaluation pathway designed to identify motivated problem-solvers with an active 
-            builder mindset. Graduates with 16 years of formal education with a willingness to work with Computer Science, AI and Math.
+            We follow a structured evaluation pathway designed to identify motivated problem-solvers with an active builder mindset.
           </p>
         </div>
 
@@ -35,10 +34,6 @@ export default function ExploreAdmissions({ onGoToSignIn }) {
             </div>
             <div>
               <span className="spotlight-tag">Academic Eligibility</span>
-              <h3>Graduates with 16 Years of Formal Education</h3>
-              <p className="spotlight-lead-requirement">
-                Graduates with 16 years of formal education with a willingness to work with Computer Science, AI and Math.
-              </p>
             </div>
           </div>
 

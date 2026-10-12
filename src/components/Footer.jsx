@@ -1,7 +1,6 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { 
-  BuildingIcon, 
   MailIcon, 
   PhoneIcon, 
   MapPinIcon, 
@@ -75,8 +74,11 @@ export default function Footer({ onGoToSignIn }) {
                 Conceived in 2001 in collaboration with Carnegie Mellon University (CMU) under the guidance of Turing Laureate Prof. Raj Reddy. Headquartered at IIIT Hyderabad.
               </p>
               <div className="footer-credential-pill">
-                <BuildingIcon size={14} />
-                <span>IIIT Hyderabad Campus • Est. 2001</span>
+                <img 
+                  src="/assets/iiit-logo.jpg" 
+                  alt="IIIT Hyderabad Logo" 
+                  className="footer-iiit-logo" 
+                />
               </div>
             </div>
 

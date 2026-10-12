@@ -2341,20 +2341,24 @@ p {
 }
 
 .footer-credential-pill {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 0.55rem;
-  background: rgba(30, 41, 59, 0.55);
-  border: 1px solid rgba(255, 255, 255, 0.09);
-  border-radius: 9999px;
-  padding: 0.45rem 0.95rem;
-  font-size: 0.78rem;
-  color: #cbd5e1;
-  font-weight: 500;
+  justify-content: center;
+  background: #ffffff;
+  border-radius: 9px;
+  padding: 7px 14px;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.2);
+  width: 100%;
+  max-width: 270px;
+  box-sizing: border-box;
 }
 
-.footer-credential-pill svg {
-  color: #60a5fa;
+.footer-iiit-logo {
+  width: 100%;
+  max-width: 245px;
+  height: auto;
+  object-fit: contain;
+  display: block;
 }
 
 /* Column 2: Academic Architecture */
@@ -23837,8 +23841,8 @@ p {
   display: flex;
   align-items: center;
   gap: 1.15rem;
-  margin-bottom: 1.75rem;
-  padding-bottom: 1.35rem;
+  margin-bottom: 1.25rem;
+  padding-bottom: 1.1rem;
   border-bottom: 1px solid #f1f5f9;
 }
 
@@ -23857,12 +23861,12 @@ p {
 
 .spotlight-tag {
   display: block;
-  font-size: 0.72rem;
+  font-size: 0.82rem;
   font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: #2563eb;
-  margin-bottom: 0.2rem;
+  letter-spacing: 0.06em;
+  color: #1d4ed8;
+  margin-bottom: 0;
 }
 
 .eligibility-spotlight-header h3 {
@@ -23923,6 +23927,10 @@ p {
   font-weight: 700;
   color: #1e293b;
   margin-bottom: 0.35rem;
+}
+
+.eligibility-detail-card strong:last-child {
+  margin-bottom: 0;
 }
 
 .eligibility-detail-card p {

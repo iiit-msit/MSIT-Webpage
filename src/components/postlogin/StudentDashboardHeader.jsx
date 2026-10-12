@@ -36,7 +36,8 @@ export default function StudentDashboardHeader({
       ? application.status 
       : (applicationStatus || 'Not Started');
     if (statusToCheck === 'Draft') return 'Continue Application';
-    if (['Submitted', 'Under Review', 'Accepted', 'Rejected', 'Declined', 'Interview Scheduled', 'Shortlisted for Interview', 'Scheduled for MSIT PGEE Exam', 'MSIT PGEE Exam Required', 'Awaiting MSIT PGEE Result', 'Onboarded', 'Enrolled'].includes(statusToCheck)) return 'View Application';
+    if (['Declined', 'Rejected'].includes(statusToCheck)) return 'Apply Now (Jan 2027)';
+    if (['Submitted', 'Under Review', 'Accepted', 'Interview Scheduled', 'Shortlisted for Interview', 'Scheduled for MSIT PGEE Exam', 'MSIT PGEE Exam Required', 'Awaiting MSIT PGEE Result', 'Onboarded', 'Enrolled'].includes(statusToCheck)) return 'View Application';
     if (statusToCheck === 'Additional Information Required') return 'Update Application';
     return 'Apply Now (Jan 2027)';
   };
@@ -48,7 +49,9 @@ export default function StudentDashboardHeader({
     if (onApply) {
       onApply(statusToCheck);
     } else {
-      if (['Submitted', 'Under Review', 'Accepted', 'Rejected', 'Declined'].includes(statusToCheck)) {
+      if (['Declined', 'Rejected'].includes(statusToCheck)) {
+        navigate('/apply?mode=edit');
+      } else if (['Submitted', 'Under Review', 'Accepted', 'Interview Scheduled', 'Shortlisted for Interview', 'Scheduled for MSIT PGEE Exam', 'MSIT PGEE Exam Required', 'Awaiting MSIT PGEE Result', 'Onboarded', 'Enrolled'].includes(statusToCheck)) {
         navigate('/apply?mode=view');
       } else if (statusToCheck === 'Additional Information Required') {
         navigate('/apply?mode=edit');
@@ -241,14 +244,14 @@ export default function StudentDashboardHeader({
       dotColor: '#ef4444',
       title: 'Admissions Decision: Declined',
       description: application?.decision_reason 
-        ? `Admissions committee remarks: "${application.decision_reason}". Thank you for your interest in MSIT.`
-        : 'The admissions committee has reviewed your application and was unable to offer admission for this intake.',
+        ? `Admissions committee remarks: "${application.decision_reason}". You may submit a fresh application.`
+        : 'The admissions committee has reviewed your application and was unable to offer admission for this intake. You may submit a fresh application.',
       noteIcon: <XCircleIcon size={16} />,
       noteBg: '#fef2f2',
       noteBorder: '#fecaca',
       noteColor: '#991b1b',
-      noteText: 'Evaluation finalized by admissions committee',
-      buttonLabel: 'View Application'
+      noteText: 'Reapplication is available for this cohort',
+      buttonLabel: 'Apply Now'
     },
     'Rejected': {
       badge: 'Application Declined',
@@ -258,14 +261,14 @@ export default function StudentDashboardHeader({
       dotColor: '#ef4444',
       title: 'Admissions Decision: Declined',
       description: application?.decision_reason 
-        ? `Admissions committee remarks: "${application.decision_reason}". Thank you for your interest in MSIT.`
-        : 'The admissions committee has finalized review for this cohort. Thank you for applying to MSIT.',
+        ? `Admissions committee remarks: "${application.decision_reason}". You may submit a fresh application.`
+        : 'The admissions committee has finalized review for this cohort. You may submit a fresh application.',
       noteIcon: <XCircleIcon size={16} />,
       noteBg: '#fef2f2',
       noteBorder: '#fecaca',
       noteColor: '#991b1b',
-      noteText: 'Evaluation completed for this intake',
-      buttonLabel: 'View Application'
+      noteText: 'Reapplication is available for this cohort',
+      buttonLabel: 'Apply Now'
     }
   };
 

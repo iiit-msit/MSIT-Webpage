@@ -198,7 +198,9 @@ export default function ProgrammePage() {
                 type="button"
                 className="btn btn-primary programme-apply-btn"
                 onClick={() => {
-                  if (['Submitted', 'Under Review', 'Accepted', 'Declined', 'Rejected'].includes(applicationStatus)) {
+                  if (['Declined', 'Rejected'].includes(applicationStatus)) {
+                    navigate('/apply?mode=edit');
+                  } else if (['Submitted', 'Under Review', 'Accepted'].includes(applicationStatus)) {
                     navigate('/apply?mode=view');
                   } else if (applicationStatus === 'Additional Information Required') {
                     navigate('/apply?mode=edit');
@@ -209,7 +211,8 @@ export default function ProgrammePage() {
               >
                 <span>
                   {applicationStatus === 'Draft' && 'Continue Application'}
-                  {['Submitted', 'Under Review', 'Accepted', 'Declined', 'Rejected'].includes(applicationStatus) && 'View Application'}
+                  {['Submitted', 'Under Review', 'Accepted'].includes(applicationStatus) && 'View Application'}
+                  {['Declined', 'Rejected'].includes(applicationStatus) && 'Apply Now'}
                   {applicationStatus === 'Additional Information Required' && 'Update Application'}
                   {applicationStatus === 'Not Started' && 'Apply Now'}
                 </span>
@@ -243,7 +246,9 @@ export default function ProgrammePage() {
         admissionSettings={admissionSettings}
         loadingSettings={loadingSettings}
         onApply={(status) => {
-          if (['Submitted', 'Under Review', 'Accepted', 'Declined', 'Rejected'].includes(status)) {
+          if (['Declined', 'Rejected'].includes(status)) {
+            navigate('/apply?mode=edit');
+          } else if (['Submitted', 'Under Review', 'Accepted'].includes(status)) {
             navigate('/apply?mode=view');
           } else if (status === 'Additional Information Required') {
             navigate('/apply?mode=edit');

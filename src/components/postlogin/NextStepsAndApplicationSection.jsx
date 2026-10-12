@@ -20,8 +20,6 @@ export default function NextStepsAndApplicationSection({
       case 'Submitted':
       case 'Under Review':
       case 'Accepted':
-      case 'Declined':
-      case 'Rejected':
       case 'Interview Scheduled':
       case 'Shortlisted for Interview':
       case 'Scheduled for MSIT PGEE Exam':
@@ -30,6 +28,12 @@ export default function NextStepsAndApplicationSection({
         return {
           label: 'View Application — Submitted Details',
           action: () => navigate('/apply?mode=view')
+        };
+      case 'Declined':
+      case 'Rejected':
+        return {
+          label: 'Apply Now — Fresh Application',
+          action: () => navigate('/apply?mode=edit')
         };
       case 'Additional Information Required':
         return {

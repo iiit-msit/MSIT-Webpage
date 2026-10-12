@@ -276,7 +276,8 @@ export default function ApplicationPortalPage() {
             isSubmitted: true
           });
 
-          if (app.status === 'Additional Information Required' || urlMode === 'edit') {
+          const isDeclined = app.status === 'Declined' || app.status === 'Rejected';
+          if (app.status === 'Additional Information Required' || urlMode === 'edit' || urlMode === 'reapply' || (isDeclined && urlMode !== 'view')) {
             setPortalMode('edit');
           } else {
             setPortalMode('view');
@@ -1063,7 +1064,7 @@ export default function ApplicationPortalPage() {
                 style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.88rem' }}
               >
                 <EditIcon size={15} />
-                <span>Edit Application</span>
+                <span>{(formData.status === 'Declined' || formData.status === 'Rejected') ? 'Apply Now (Edit & Reapply)' : 'Edit Application'}</span>
               </button>
             </div>
 
@@ -1440,14 +1441,20 @@ export default function ApplicationPortalPage() {
               <InfoIcon size={24} />
               <div>
                 <h4 style={{ margin: '0 0 0.25rem 0', fontWeight: '800' }}>
-                  {formData.status === 'Additional Information Required' ? 'Update Requested by Admissions Team' : 'Edit Application & Uploaded Memos'}
+                  {formData.status === 'Additional Information Required' 
+                    ? 'Update Requested by Admissions Team' 
+                    : (formData.status === 'Declined' || formData.status === 'Rejected'
+                        ? 'Apply Now — Fresh Application (Details Pre-filled)'
+                        : 'Edit Application & Uploaded Memos')}
                 </h4>
                 <p style={{ margin: 0, fontSize: '0.9rem' }}>
-                  All 8 sections including personal information, academic qualifications, and uploaded memos are editable. Review and re-submit on the final step when finished.
+                  {formData.status === 'Declined' || formData.status === 'Rejected'
+                    ? 'Your previously entered details and uploaded memos are preserved in the saved state below. You can edit any fields you wish, then submit your fresh application.'
+                    : 'All 8 sections including personal information, academic qualifications, and uploaded memos are editable. Review and re-submit on the final step when finished.'}
                 </p>
               </div>
             </div>
-            {formData.isSubmitted && (
+            {formData.isSubmitted && formData.status !== 'Declined' && formData.status !== 'Rejected' && (
               <button
                 type="button"
                 className="btn btn-secondary btn-sm"
@@ -2723,7 +2730,7 @@ export default function ApplicationPortalPage() {
                   disabled={isSubmitting}
                   onClick={handleSubmitApplication}
                 >
-                  <span>{isSubmitting ? 'Submitting Application...' : (portalMode === 'edit' ? 'Update & Re-submit Application' : 'Submit Application')}</span>
+                  <span>{isSubmitting ? 'Submitting Application...' : ((formData.status === 'Declined' || formData.status === 'Rejected') ? 'Submit Fresh Application' : (portalMode === 'edit' ? 'Update & Re-submit Application' : 'Submit Application'))}</span>
                   <ArrowRightIcon size={16} />
                 </button>
               </div>

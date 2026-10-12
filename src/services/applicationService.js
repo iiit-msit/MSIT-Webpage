@@ -903,6 +903,20 @@ export async function updateStudentApplication(applicationId, updateData, authUs
     documents: formattedDocs.length > 0 ? formattedDocs : (updateData.documents || []),
     status: 'Submitted',
     document_status: 'Pending Review',
+    decision_reason: null,
+    decided_by: null,
+    decided_at: null,
+    gat_status: 'Pending',
+    gat_score: null,
+    gat_result: 'Pending',
+    gat_exam_date: null,
+    interview_status: 'Pending',
+    interview_date: null,
+    interview_time: null,
+    interview_outcome: 'Pending',
+    final_decision: null,
+    admission_offer: null,
+    submitted_at: now,
     updated_at: now
   };
 
@@ -971,7 +985,11 @@ export async function updateStudentApplication(applicationId, updateData, authUs
         'experience_years', 'experience_months', 'company_name', 'job_role',
         'entrance_exam_status', 'gre_score', 'gre_year', 'gate_score', 'gate_year',
         'cv_url', 'cv_filename', 'statement_text', 'statement_word_count',
-        'referral_source', 'referral_explanation'
+        'referral_source', 'referral_explanation',
+        'decision_reason', 'decided_by', 'decided_at', 'submitted_at',
+        'gat_status', 'gat_score', 'gat_result', 'gat_exam_date',
+        'interview_status', 'interview_date', 'interview_time', 'interview_outcome',
+        'final_decision', 'admission_offer'
       ];
       const sanitizedRecord = {};
       validCols.forEach(k => {
@@ -992,7 +1010,8 @@ export async function updateStudentApplication(applicationId, updateData, authUs
         const baseCols = [
           'full_name', 'phone', 'dob', 'address', 'parent_relationship', 'parent_name', 'alt_phone',
           'ug_degree', 'department', 'cgpa', 'passing_year', 'has_experience', 'experience_details',
-          'purpose_to_join', 'status', 'document_status', 'updated_at'
+          'purpose_to_join', 'status', 'document_status', 'updated_at',
+          'decision_reason', 'decided_by', 'decided_at', 'submitted_at'
         ];
         const baseRecord = {};
         baseCols.forEach(k => {

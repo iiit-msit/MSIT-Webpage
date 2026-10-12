@@ -58,24 +58,13 @@ export default function ExplorePracticum() {
           
           {/* Track 1: Industry Track */}
           <div className="practicum-track-card card-coop">
-            <div className="track-card-media">
-              <img 
-                src="/assets/iiit-coop.jpg" 
-                alt="Work with Industry at MSIT" 
-                className="track-card-image"
-                loading="lazy" 
-              />
-              <div className="track-media-overlay"></div>
-              <div className="track-pill-tag tag-coop">
-                <CorporateBuildingIcon size={15} />
-                <span>Industry Track</span>
-              </div>
-            </div>
-
             <div className="track-card-body">
               <div className="track-header-row">
                 <h3>Work with Industry</h3>
-                <span className="track-tenure-badge">Industry Track</span>
+                <span className="track-tenure-badge">
+                  <CorporateBuildingIcon size={14} />
+                  <span>Industry Track</span>
+                </span>
               </div>
               
               <p className="track-lead-desc">
@@ -117,24 +106,13 @@ export default function ExplorePracticum() {
 
           {/* Track 2: Innovation Track */}
           <div className="practicum-track-card card-venture">
-            <div className="track-card-media">
-              <img 
-                src="/assets/iiit-ai-lab.jpg" 
-                alt="Build and Explore at MSIT" 
-                className="track-card-image"
-                loading="lazy" 
-              />
-              <div className="track-media-overlay"></div>
-              <div className="track-pill-tag tag-venture">
-                <RocketIcon size={15} />
-                <span>Innovation Track</span>
-              </div>
-            </div>
-
             <div className="track-card-body">
               <div className="track-header-row">
                 <h3>Build &amp; Explore</h3>
-                <span className="track-tenure-badge badge-venture">Innovation Track</span>
+                <span className="track-tenure-badge badge-venture">
+                  <RocketIcon size={14} />
+                  <span>Innovation Track</span>
+                </span>
               </div>
               
               <p className="track-lead-desc">

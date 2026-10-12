@@ -150,6 +150,8 @@ export default function Footer({ onGoToSignIn }) {
                   </div>
                 </div>
 
+                {/* TODO: Restore Admissions Support Desk once official contact number and desk details are confirmed. */}
+                {/*
                 <div className="footer-contact-item">
                   <div className="contact-icon-box">
                     <PhoneIcon size={16} />
@@ -160,6 +162,7 @@ export default function Footer({ onGoToSignIn }) {
                     <span className="contact-timings">Mon – Sat: 9:30 AM – 5:30 PM IST</span>
                   </div>
                 </div>
+                */}
               </div>
             </div>
 

@@ -22949,7 +22949,7 @@ p {
 }
 
 .track-card-body {
-  padding: 2rem 2rem 1.85rem;
+  padding: 2.25rem 2rem 2rem;
   display: flex;
   flex-direction: column;
   flex: 1;
@@ -22976,13 +22976,15 @@ p {
 }
 
 .track-tenure-badge {
-  display: inline-block;
-  font-size: 0.68rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.72rem;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
-  padding: 0.25rem 0.65rem;
-  border-radius: 6px;
+  letter-spacing: 0.05em;
+  padding: 0.3rem 0.75rem;
+  border-radius: 8px;
   background: #eff6ff;
   color: #1d4ed8;
   border: 1px solid #dbeafe;

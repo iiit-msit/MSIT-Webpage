@@ -32,17 +32,29 @@ export default function StudentDashboardHeader({
   const appModes = admissionSettings?.admissionModes || 'GRE, GATE, or MSIT Exam';
 
   const getButtonLabel = () => {
-    if (applicationStatus === 'Draft') return 'Continue Application';
-    if (['Submitted', 'Under Review', 'Accepted', 'Rejected', 'Declined', 'Interview Scheduled', 'Shortlisted for Interview', 'Scheduled for MSIT PGEE Exam', 'MSIT PGEE Exam Required', 'Awaiting MSIT PGEE Result'].includes(applicationStatus)) return 'View Application';
-    if (applicationStatus === 'Additional Information Required') return 'Update Application';
+    const statusToCheck = (application?.status && application.status !== 'Not Started') 
+      ? application.status 
+      : (applicationStatus || 'Not Started');
+    if (statusToCheck === 'Draft') return 'Continue Application';
+    if (['Submitted', 'Under Review', 'Accepted', 'Rejected', 'Declined', 'Interview Scheduled', 'Shortlisted for Interview', 'Scheduled for MSIT PGEE Exam', 'MSIT PGEE Exam Required', 'Awaiting MSIT PGEE Result', 'Onboarded', 'Enrolled'].includes(statusToCheck)) return 'View Application';
+    if (statusToCheck === 'Additional Information Required') return 'Update Application';
     return 'Apply Now (Jan 2027)';
   };
 
   const handleActionClick = () => {
+    const statusToCheck = (application?.status && application.status !== 'Not Started') 
+      ? application.status 
+      : (applicationStatus || 'Not Started');
     if (onApply) {
-      onApply(applicationStatus);
+      onApply(statusToCheck);
     } else {
-      navigate('/apply');
+      if (['Submitted', 'Under Review', 'Accepted', 'Rejected', 'Declined'].includes(statusToCheck)) {
+        navigate('/apply?mode=view');
+      } else if (statusToCheck === 'Additional Information Required') {
+        navigate('/apply?mode=edit');
+      } else {
+        navigate('/apply');
+      }
     }
   };
 
@@ -264,40 +276,59 @@ export default function StudentDashboardHeader({
   const currentStatusConfig = statusConfigMap[effectiveStatus] || statusConfigMap[applicationStatus] || statusConfigMap['Not Started'];
 
   // =========================================================================
+  // ZERO-STATE & ACTIVE APPLICATION GUARD
+  // =========================================================================
+  const hasActiveApplication = Boolean(
+    application && 
+    application.status && 
+    application.status !== 'Not Started' && 
+    application.status !== 'Draft' &&
+    effectiveStatus !== 'Not Started' &&
+    effectiveStatus !== 'Draft'
+  );
+
+  // =========================================================================
   // FIVE-STEP ADMISSION WORKFLOW EVALUATION
   // =========================================================================
 
   // --- Step 4: One-on-One Discussion & Scheduling Prep ---
-  const interviewDate = application?.interview_date || (admissionSettings?.interviewSchedule && admissionSettings.interviewSchedule !== 'TBD' ? admissionSettings.interviewSchedule : null);
-  const interviewTime = application?.interview_time || '';
+  // Candidate-specific interview schedule should only come from candidate application record
+  const interviewDate = (hasActiveApplication && application?.interview_date && application.interview_date !== 'TBD' && application.interview_date !== 'null')
+    ? application.interview_date
+    : null;
+  const interviewTime = (hasActiveApplication && application?.interview_time) || '';
   const hasInterviewScheduled = Boolean(
-    effectiveStatus === 'Interview Scheduled' ||
-    effectiveStatus === 'Shortlisted for Interview' ||
-    application?.status === 'Interview Scheduled' ||
-    application?.status === 'Shortlisted for Interview' ||
-    applicationStatus === 'Interview Scheduled' ||
-    applicationStatus === 'Shortlisted for Interview' ||
-    application?.interview_status === 'Scheduled' ||
-    (interviewDate && interviewDate !== 'TBD' && interviewDate !== 'null')
+    hasActiveApplication && (
+      effectiveStatus === 'Interview Scheduled' ||
+      effectiveStatus === 'Shortlisted for Interview' ||
+      application?.status === 'Interview Scheduled' ||
+      application?.status === 'Shortlisted for Interview' ||
+      applicationStatus === 'Interview Scheduled' ||
+      applicationStatus === 'Shortlisted for Interview' ||
+      application?.interview_status === 'Scheduled' ||
+      Boolean(interviewDate)
+    )
   );
 
   // --- Step 3: Eligibility & PGEE Scheduling Prep ---
   const isPgeeScheduled = Boolean(
-    effectiveStatus === 'Scheduled for MSIT PGEE Exam' ||
-    effectiveStatus === 'MSIT PGEE Exam Required' ||
-    effectiveStatus === 'Awaiting MSIT PGEE Result' ||
-    application?.status === 'Scheduled for MSIT PGEE Exam' ||
-    application?.status === 'MSIT PGEE Exam Required' ||
-    application?.status === 'Awaiting MSIT PGEE Result' ||
-    applicationStatus === 'Scheduled for MSIT PGEE Exam' ||
-    applicationStatus === 'MSIT PGEE Exam Required' ||
-    applicationStatus === 'Awaiting MSIT PGEE Result' ||
-    application?.gat_status === 'Scheduled' ||
-    (application?.gat_exam_date && application?.gat_exam_date !== 'TBD')
+    hasActiveApplication && (
+      effectiveStatus === 'Scheduled for MSIT PGEE Exam' ||
+      effectiveStatus === 'MSIT PGEE Exam Required' ||
+      effectiveStatus === 'Awaiting MSIT PGEE Result' ||
+      application?.status === 'Scheduled for MSIT PGEE Exam' ||
+      application?.status === 'MSIT PGEE Exam Required' ||
+      application?.status === 'Awaiting MSIT PGEE Result' ||
+      applicationStatus === 'Scheduled for MSIT PGEE Exam' ||
+      applicationStatus === 'MSIT PGEE Exam Required' ||
+      applicationStatus === 'Awaiting MSIT PGEE Result' ||
+      application?.gat_status === 'Scheduled' ||
+      (application?.gat_exam_date && application?.gat_exam_date !== 'TBD')
+    )
   );
 
   // --- Step 2: Application Review & Document Verification ---
-  const rawDocs = application?.documents;
+  const rawDocs = hasActiveApplication ? application?.documents : null;
   let docs = [];
   if (Array.isArray(rawDocs)) {
     docs = rawDocs.filter(Boolean);
@@ -317,37 +348,33 @@ export default function StudentDashboardHeader({
   }
 
   const rejectedDocs = docs.filter(d => d && (d.status === 'Rejected' || d.verificationStatus === 'Rejected'));
-  const hasRejectedDoc = rejectedDocs.length > 0 || application?.document_status === 'Rejected';
-  const allDocsVerified = docs.length > 0 && docs.every(d => d && (d.status === 'Verified' || d.verificationStatus === 'Verified'));
+  const hasRejectedDoc = hasActiveApplication && (rejectedDocs.length > 0 || application?.document_status === 'Rejected');
+  const allDocsVerified = hasActiveApplication && docs.length > 0 && docs.every(d => d && (d.status === 'Verified' || d.verificationStatus === 'Verified'));
 
   const isDocVerified = Boolean(
-    allDocsVerified || 
-    application?.document_status === 'Verified' || 
-    application?.document_status === 'Documents Verified' ||
-    isPgeeScheduled ||
-    hasInterviewScheduled ||
-    [
-      'Accepted', 
-      'Interview Scheduled', 
-      'Shortlisted for Interview',
-      'Interview Completed', 
-      'Scheduled for MSIT PGEE Exam', 
-      'MSIT PGEE Exam Required', 
-      'Awaiting MSIT PGEE Result', 
-      'Onboarded', 
-      'Enrolled'
-    ].includes(effectiveStatus) ||
-    [
-      'Accepted', 
-      'Interview Scheduled', 
-      'Shortlisted for Interview',
-      'Interview Completed', 
-      'Scheduled for MSIT PGEE Exam', 
-      'MSIT PGEE Exam Required', 
-      'Awaiting MSIT PGEE Result', 
-      'Onboarded', 
-      'Enrolled'
-    ].includes(application?.status)
+    hasActiveApplication && !hasRejectedDoc && (
+      allDocsVerified || 
+      application?.document_status === 'Verified' || 
+      application?.document_status === 'Documents Verified' ||
+      [
+        'Accepted', 
+        'Interview Scheduled', 
+        'Shortlisted for Interview',
+        'Interview Completed', 
+        'Scheduled for MSIT PGEE Exam', 
+        'Onboarded', 
+        'Enrolled'
+      ].includes(effectiveStatus) ||
+      [
+        'Accepted', 
+        'Interview Scheduled', 
+        'Shortlisted for Interview',
+        'Interview Completed', 
+        'Scheduled for MSIT PGEE Exam', 
+        'Onboarded', 
+        'Enrolled'
+      ].includes(application?.status)
+    )
   );
 
   // --- Step 1: Application Submission ---
@@ -368,14 +395,13 @@ export default function StudentDashboardHeader({
     'Enrolled'
   ];
   const isAppSubmitted = Boolean(
-    submittedStatuses.includes(effectiveStatus) ||
-    submittedStatuses.includes(application?.status) ||
-    submittedStatuses.includes(applicationStatus) ||
-    isDocVerified ||
-    isPgeeScheduled ||
-    hasInterviewScheduled ||
-    application?.submitted_at ||
-    application?.isSubmitted
+    hasActiveApplication && (
+      submittedStatuses.includes(effectiveStatus) ||
+      submittedStatuses.includes(application?.status) ||
+      submittedStatuses.includes(applicationStatus) ||
+      application?.submitted_at ||
+      application?.isSubmitted
+    )
   );
 
   // --- Step 3: Pathway Calculations ---
@@ -385,57 +411,74 @@ export default function StudentDashboardHeader({
   const gateMin = Number(admissionSettings?.gateMinScore || 350);
 
   const hasValidGre = Boolean(
+    hasActiveApplication &&
     (application?.entrance_exam_status === 'GRE' || application?.entrance_exam_status === 'Both') &&
     application?.gre_score &&
     (!isNaN(greScoreNum) ? greScoreNum >= greMin : true)
   );
 
   const hasValidGate = Boolean(
+    hasActiveApplication &&
     (application?.entrance_exam_status === 'GATE' || application?.entrance_exam_status === 'Both') &&
     application?.gate_score &&
     (!isNaN(gateScoreNum) ? gateScoreNum >= gateMin : true)
   );
 
-  const isGateGrePathway = hasValidGre || hasValidGate;
+  const isGateGrePathway = hasActiveApplication && (hasValidGre || hasValidGate);
 
   const isGatCompleted = Boolean(
-    application?.gat_status === 'Completed' ||
-    application?.gat_result === 'Qualified' ||
-    application?.gat_score ||
-    ['Interview Scheduled', 'Interview Completed', 'Accepted', 'Onboarded', 'Enrolled'].includes(application?.status)
+    hasActiveApplication && (
+      application?.gat_status === 'Completed' ||
+      application?.gat_result === 'Qualified' ||
+      application?.gat_score ||
+      ['Interview Scheduled', 'Interview Completed', 'Accepted', 'Onboarded', 'Enrolled'].includes(application?.status)
+    )
   );
-  const gatExamDate = application?.gat_exam_date || admissionSettings?.gatExamDate || admissionSettings?.gatSchedule || 'December 15, 2026';
+  const gatExamDate = hasActiveApplication 
+    ? (application?.gat_exam_date || admissionSettings?.gatExamDate || admissionSettings?.gatSchedule || 'December 15, 2026')
+    : null;
 
   // --- Interview Outcomes ---
   const isInterviewPassed = Boolean(
-    application?.interview_outcome === 'Cleared' ||
-    application?.interview_outcome === 'Recommended' ||
-    application?.interview_status === 'Completed' ||
-    ['Interview Completed', 'Accepted', 'Onboarded', 'Enrolled'].includes(application?.status)
+    hasActiveApplication && (
+      application?.interview_outcome === 'Cleared' ||
+      application?.interview_outcome === 'Recommended' ||
+      application?.interview_status === 'Completed' ||
+      ['Interview Completed', 'Accepted', 'Onboarded', 'Enrolled'].includes(application?.status)
+    )
   );
   const isInterviewUnsuccessful = Boolean(
-    application?.interview_outcome === 'Not Cleared' ||
-    application?.interview_outcome === 'Declined'
+    hasActiveApplication && (
+      application?.interview_outcome === 'Not Cleared' ||
+      application?.interview_outcome === 'Declined'
+    )
   );
 
   // --- Step 5: Final Decisions ---
   const isSelected = Boolean(
-    ['Accepted', 'Onboarded', 'Enrolled'].includes(effectiveStatus) ||
-    ['Accepted', 'Onboarded', 'Enrolled'].includes(application?.status) ||
-    ['Accepted', 'Onboarded', 'Enrolled'].includes(applicationStatus) ||
-    application?.final_decision === 'Accepted' ||
-    application?.admission_offer === 'Issued'
+    hasActiveApplication && (
+      ['Accepted', 'Onboarded', 'Enrolled'].includes(effectiveStatus) ||
+      ['Accepted', 'Onboarded', 'Enrolled'].includes(application?.status) ||
+      ['Accepted', 'Onboarded', 'Enrolled'].includes(applicationStatus) ||
+      application?.final_decision === 'Accepted' ||
+      application?.admission_offer === 'Issued'
+    )
   );
   const isRejected = Boolean(
-    ['Declined', 'Rejected'].includes(effectiveStatus) ||
-    ['Declined', 'Rejected'].includes(application?.status) ||
-    ['Declined', 'Rejected'].includes(applicationStatus) ||
-    application?.final_decision === 'Rejected'
+    hasActiveApplication && (
+      ['Declined', 'Rejected'].includes(effectiveStatus) ||
+      ['Declined', 'Rejected'].includes(application?.status) ||
+      ['Declined', 'Rejected'].includes(applicationStatus) ||
+      application?.final_decision === 'Rejected' ||
+      application?.final_decision === 'Declined'
+    )
   );
   const isOnboarded = Boolean(
-    ['Onboarded', 'Enrolled'].includes(effectiveStatus) ||
-    ['Onboarded', 'Enrolled'].includes(application?.status) ||
-    application?.onboarding_status === 'Completed'
+    hasActiveApplication && (
+      ['Onboarded', 'Enrolled'].includes(effectiveStatus) ||
+      ['Onboarded', 'Enrolled'].includes(application?.status) ||
+      application?.onboarding_status === 'Completed'
+    )
   );
   const onboardingDate = application?.onboarding_date || admissionSettings?.commencementDate || 'January 2, 2027';
   const onboardingVenue = application?.onboarding_venue || admissionSettings?.commencementVenue || 'IIIT Hyderabad';
@@ -451,8 +494,8 @@ export default function StudentDashboardHeader({
   const wasDeclinedAtInterview = Boolean(
     isRejected && (
       isInterviewUnsuccessful ||
-      application?.interview_status === 'Completed' ||
-      application?.interview_date
+      application?.interview_outcome === 'Not Cleared' ||
+      application?.interview_outcome === 'Declined'
     ) && !wasDeclinedAtPgee
   );
 
@@ -461,57 +504,99 @@ export default function StudentDashboardHeader({
   );
 
   // Construct Dynamic 5-Step Admission Progress
-  const admissionSteps = [
+  const admissionSteps = !hasActiveApplication ? [
+    // -------------------------------------------------------------
+    // ZERO STATE: Candidate has not submitted an application yet
+    // -------------------------------------------------------------
+    {
+      id: "1",
+      title: "Application Submission",
+      done: false,
+      statusState: 'pending',
+      badgeText: 'Pending',
+      metaText: 'Online submission required'
+    },
+    {
+      id: "2",
+      title: "Application Review & Document Verification",
+      done: false,
+      statusState: 'pending',
+      badgeText: 'Pending',
+      metaText: 'Awaiting application submission'
+    },
+    {
+      id: "3",
+      title: "MSIT PGEE Examination Required",
+      done: false,
+      statusState: 'pending',
+      badgeText: 'Pending',
+      metaText: 'Awaiting document verification'
+    },
+    {
+      id: "4",
+      title: "One-on-One Discussion",
+      done: false,
+      statusState: 'pending',
+      badgeText: 'Pending',
+      metaText: 'Awaiting prior verification'
+    },
+    {
+      id: "5",
+      title: "Final Decision & Onboarding",
+      done: false,
+      statusState: 'pending',
+      badgeText: 'Pending Decision',
+      metaText: 'Awaiting final selection outcome and onboarding confirmation'
+    }
+  ] : [
+    // -------------------------------------------------------------
+    // ACTIVE WORKFLOW: Dynamic status communicating with Database
+    // -------------------------------------------------------------
+
     // Step 1: Application Submission
     {
       id: "1",
       title: "Application Submission",
       done: isAppSubmitted,
-      statusState: isAppSubmitted ? 'completed' : 'pending',
-      badgeText: isAppSubmitted ? 'Completed' : 'Pending',
-      metaText: isAppSubmitted 
-        ? (application?.submitted_at ? `Submitted on ${new Date(application.submitted_at).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}` : `Ref: ${application?.application_id || 'Submitted'}`)
-        : 'Online submission required'
+      statusState: 'completed',
+      badgeText: isRejected ? 'Submitted' : 'Completed',
+      metaText: application?.submitted_at 
+        ? `Submitted on ${new Date(application.submitted_at).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}` 
+        : `Ref: ${application?.application_id || 'Submitted'}`
     },
 
     // Step 2: Application Review & Document Verification
     {
       id: "2",
       title: (hasRejectedDoc && !wasDeclinedAtReview) ? "Document Verification" : "Application Review & Document Verification",
-      done: !isRejected && (isAppSubmitted && isDocVerified),
+      done: !isRejected && isDocVerified,
       statusState: wasDeclinedAtReview
         ? 'rejected'
         : isRejected
           ? 'completed'
-          : !isAppSubmitted 
-            ? 'pending' 
-            : hasRejectedDoc 
-              ? 'rejected' 
-              : isDocVerified 
-                ? 'completed' 
-                : 'review',
+          : hasRejectedDoc 
+            ? 'rejected' 
+            : isDocVerified 
+              ? 'completed' 
+              : 'review',
       badgeText: wasDeclinedAtReview
         ? 'Application Declined'
         : isRejected
           ? 'Documents Verified'
-          : !isAppSubmitted
-            ? 'Pending'
-            : hasRejectedDoc
-              ? 'Document Rejected'
-              : isDocVerified
-                ? 'Documents Verified'
-                : 'Application Under Review',
+          : hasRejectedDoc
+            ? 'Document Rejected'
+            : isDocVerified
+              ? 'Documents Verified'
+              : 'Application Under Review',
       metaText: wasDeclinedAtReview
-        ? (application?.decision_reason || 'Incomplete transcripts / Criteria not met')
+        ? (application?.decision_reason || 'Criteria not met / Application declined')
         : isRejected
           ? 'All documents verified'
-          : !isAppSubmitted
-            ? 'Awaiting application submission'
-            : hasRejectedDoc
-              ? null
-              : isDocVerified
-                ? 'All documents verified'
-                : 'Review in progress by admissions committee',
+          : hasRejectedDoc
+            ? null
+            : isDocVerified
+              ? 'All documents verified'
+              : 'Review in progress by admissions committee',
       rejectedDocInfo: hasRejectedDoc ? {
         name: rejectedDocs[0]?.doc_type || rejectedDocs[0]?.docType || rejectedDocs[0]?.name || rejectedDocs[0]?.fileName || 'Uploaded Document',
         reason: rejectedDocs[0]?.rejection_reason || rejectedDocs[0]?.rejectionReason || application?.decision_reason || 'Document does not meet institutional verification criteria.'
@@ -526,11 +611,11 @@ export default function StudentDashboardHeader({
         : (isGateGrePathway ? "Eligibility & Evaluation" : "MSIT PGEE Examination Required"),
       done: !isRejected && (isGatCompleted || (isGateGrePathway && !isPgeeScheduled)),
       statusState: wasDeclinedAtReview
-        ? 'disabled'
+        ? 'rejected'
         : wasDeclinedAtPgee
           ? 'rejected'
           : isRejected
-            ? (isGatCompleted || isGateGrePathway ? 'completed' : 'disabled')
+            ? ((isGatCompleted || isGateGrePathway) ? 'completed' : 'rejected')
             : isGatCompleted
               ? 'completed'
               : isPgeeScheduled
@@ -541,11 +626,11 @@ export default function StudentDashboardHeader({
                     ? 'completed'
                     : 'warning',
       badgeText: wasDeclinedAtReview
-        ? 'Process Concluded'
+        ? 'Application Declined'
         : wasDeclinedAtPgee
-          ? 'Not Qualified'
+          ? 'Declined'
           : isRejected
-            ? (isGatCompleted ? 'MSIT PGEE Cleared' : isGateGrePathway ? 'GATE/GRE Verified' : 'Process Concluded')
+            ? (isGatCompleted ? 'MSIT PGEE Cleared' : isGateGrePathway ? 'GATE/GRE Verified' : 'Application Declined')
             : isGatCompleted
               ? 'MSIT PGEE Cleared'
               : isPgeeScheduled
@@ -556,9 +641,9 @@ export default function StudentDashboardHeader({
                     ? 'Eligible for Interview'
                     : 'MSIT PGEE Exam Required',
       metaText: wasDeclinedAtReview
-        ? 'Admissions evaluation concluded'
+        ? 'Evaluation cancelled · Application declined'
         : wasDeclinedAtPgee
-          ? (application?.decision_reason || 'Cutoff score not met')
+          ? (application?.decision_reason || 'Cutoff score not met · Candidate not qualified')
           : isRejected
             ? (isGatCompleted ? 'Entrance test cleared' : 'Admissions evaluation concluded')
             : isGatCompleted
@@ -568,7 +653,7 @@ export default function StudentDashboardHeader({
                 : !isDocVerified
                   ? 'Awaiting document verification'
                   : isGateGrePathway
-                    ? (interviewDate && interviewDate !== 'TBD' && interviewDate !== 'null'
+                    ? (interviewDate
                         ? `Scheduled: ${interviewDate}${interviewTime ? ` at ${interviewTime}` : ''}`
                         : `Qualified via ${hasValidGate ? 'GATE' : 'GRE'} score (MSIT PGEE exempt)`)
                     : (gatExamDate ? `Exam Date: ${gatExamDate}${application?.gat_slot ? ` (${application.gat_slot})` : ''} · IIITH Nilgiri` : 'Exam date to be announced')
@@ -579,51 +664,57 @@ export default function StudentDashboardHeader({
       id: "4",
       title: "One-on-One Discussion",
       done: !isRejected && isInterviewPassed,
-      statusState: (wasDeclinedAtReview || wasDeclinedAtPgee)
-        ? 'disabled'
-        : wasDeclinedAtInterview
+      statusState: wasDeclinedAtReview
+        ? 'rejected'
+        : wasDeclinedAtPgee
           ? 'rejected'
-          : isRejected
-            ? (isInterviewPassed ? 'completed' : 'disabled')
-            : isInterviewPassed
-              ? 'completed'
-              : isInterviewUnsuccessful
-                ? 'rejected'
-                : hasInterviewScheduled
-                  ? 'review'
-                  : 'pending',
-      badgeText: (wasDeclinedAtReview || wasDeclinedAtPgee)
-        ? 'Process Concluded'
-        : wasDeclinedAtInterview
-          ? 'Not Cleared'
-          : isRejected
-            ? (isInterviewPassed ? 'Interview Cleared' : 'Process Concluded')
-            : isInterviewPassed
-              ? 'Interview Cleared'
-              : isInterviewUnsuccessful
-                ? 'Not Cleared'
-                : hasInterviewScheduled
-                  ? 'Interview Scheduled'
-                  : isPgeeScheduled
-                    ? 'Awaiting PGEE Result'
-                    : 'Awaiting Scheduling',
-      metaText: (wasDeclinedAtReview || wasDeclinedAtPgee)
-        ? 'Admissions evaluation concluded'
-        : wasDeclinedAtInterview
-          ? (application?.decision_reason || 'Interview outcome not cleared')
-          : isRejected
-            ? (isInterviewPassed ? 'Interview cleared' : 'Admissions evaluation concluded')
-            : isInterviewPassed
-              ? 'Outcome: Recommended for Admission'
-              : isInterviewUnsuccessful
-                ? 'Interview outcome not cleared'
-                : hasInterviewScheduled
-                  ? `Interview Date: ${interviewDate && interviewDate !== 'null' ? interviewDate : 'Scheduled · Slot TBD'}${interviewTime ? ` at ${interviewTime}` : ''} (IIITH Nilgiri)`
-                  : isPgeeScheduled
-                    ? 'Qualify MSIT PGEE exam to advance to interview'
-                    : (!isDocVerified || (!isGateGrePathway && !isGatCompleted))
-                      ? (!isGateGrePathway ? 'Awaiting evaluation result' : 'Awaiting prior verification')
-                      : (admissionSettings?.interviewInstructions || 'Interview schedule to be announced by admissions team')
+          : wasDeclinedAtInterview
+            ? 'rejected'
+            : isRejected
+              ? (isInterviewPassed ? 'completed' : 'rejected')
+              : isInterviewPassed
+                ? 'completed'
+                : isInterviewUnsuccessful
+                  ? 'rejected'
+                  : hasInterviewScheduled
+                    ? 'review'
+                    : 'pending',
+      badgeText: wasDeclinedAtReview
+        ? 'Application Declined'
+        : wasDeclinedAtPgee
+          ? 'Application Declined'
+          : wasDeclinedAtInterview
+            ? 'Declined'
+            : isRejected
+              ? (isInterviewPassed ? 'Interview Cleared' : 'Application Declined')
+              : isInterviewPassed
+                ? 'Interview Cleared'
+                : isInterviewUnsuccessful
+                  ? 'Not Cleared'
+                  : hasInterviewScheduled
+                    ? 'Interview Scheduled'
+                    : isPgeeScheduled
+                      ? 'Awaiting PGEE Result'
+                      : 'Awaiting Scheduling',
+      metaText: wasDeclinedAtReview
+        ? 'Discussion cancelled · Application declined'
+        : wasDeclinedAtPgee
+          ? 'Discussion cancelled · Candidate not qualified'
+          : wasDeclinedAtInterview
+            ? (application?.decision_reason || 'Interview outcome not cleared')
+            : isRejected
+              ? (isInterviewPassed ? 'Interview cleared' : 'Discussion cancelled · Application declined')
+              : isInterviewPassed
+                ? 'Outcome: Recommended for Admission'
+                : isInterviewUnsuccessful
+                  ? 'Interview outcome not cleared'
+                  : hasInterviewScheduled
+                    ? (interviewDate ? `Interview Date: ${interviewDate}${interviewTime ? ` at ${interviewTime}` : ''} (IIITH Nilgiri)` : 'Interview scheduled · Slot TBD')
+                    : isPgeeScheduled
+                      ? 'Qualify MSIT PGEE exam to advance to interview'
+                      : (!isDocVerified || (!isGateGrePathway && !isGatCompleted))
+                        ? (!isGateGrePathway ? 'Awaiting evaluation result' : 'Awaiting prior verification')
+                        : (admissionSettings?.interviewInstructions || 'Interview schedule to be announced by admissions team')
     },
 
     // Step 5: Final Decision & Onboarding
@@ -648,7 +739,7 @@ export default function StudentDashboardHeader({
       metaText: isSelected 
         ? `Commencement: ${onboardingDate} (${onboardingVenue})`
         : isRejected 
-          ? (application?.decision_reason ? `Reason: ${application.decision_reason}` : 'Admissions evaluation finalized')
+          ? (application?.decision_reason ? `Reason: ${application.decision_reason}` : 'Admissions evaluation finalized · Application declined')
           : 'Awaiting final selection outcome and onboarding confirmation'
     }
   ];

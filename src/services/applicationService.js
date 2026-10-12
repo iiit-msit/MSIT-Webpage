@@ -278,13 +278,23 @@ export async function getUserApplication(authUser) {
           application: app,
           status: app.status || 'Submitted'
         };
+      } else if (!error && Array.isArray(data) && data.length === 0) {
+        // Supabase is authoritative and live. Zero rows returned means candidate has not submitted an application yet.
+        const draft = safeJsonParse(getDraftKey(email), null);
+        if (draft && !draft.isSubmitted) {
+          return {
+            application: draft,
+            status: 'Draft'
+          };
+        }
+        return { application: null, status: 'Not Started' };
       }
     } catch (err) {
       console.warn('[MSIT] Supabase getUserApplication warning:', err);
     }
   }
 
-  // 2. Check submitted applications in localStorage or student-specific cache
+  // 2. Fallback when Supabase is unreachable: check submitted applications in localStorage or student-specific cache
   const allSubmitted = safeJsonParse(LOCAL_STORAGE_APPS_KEY, []);
   const matchingSubmitted = allSubmitted.find(a => 
     (a.email || '').toLowerCase() === email || 
@@ -296,7 +306,7 @@ export async function getUserApplication(authUser) {
     safeJsonParse(`msit_student_application_${email}`, null) : null;
 
   const targetApp = matchingSubmitted || directStudentApp;
-  if (targetApp) {
+  if (targetApp && targetApp.status !== 'Draft') {
     cleanseStudentRecord(targetApp, email);
     const finalStatus = directStatus || targetApp.status || 'Submitted';
     return {
@@ -399,52 +409,20 @@ export async function saveApplicationDraft(draftData, authUser = null) {
   // 1. Save to local storage
   safeJsonSet(getDraftKey(email), draftRecord);
 
-  // 1b. Upsert into LOCAL_STORAGE_APPS_KEY so Admin Console sees this filled candidate application
+  // 1b. If an existing submitted application exists, preserve it; otherwise do not inject fake Submitted status
   try {
     const existingApps = safeJsonParse(LOCAL_STORAGE_APPS_KEY, []);
     const existingIdx = existingApps.findIndex(a => 
       (a.email && a.email.toLowerCase() === email) ||
       (draftData.applicationId && a.application_id === draftData.applicationId)
     );
-    const candidateAppObj = {
-      id: draftData.id || `app_${email.replace(/[^a-zA-Z0-9]/g, '_')}`,
-      application_id: draftData.applicationId || (existingIdx !== -1 ? existingApps[existingIdx].application_id : generateApplicationId()),
-      full_name: draftData.fullName || draftData.full_name || '',
-      email,
-      phone: draftData.phone || '',
-      dob: draftData.dob || null,
-      address: draftData.address || '',
-      parent_relationship: draftData.parentRelationship || 'Father',
-      parent_name: draftData.parentName || '',
-      alt_phone: draftData.altPhone || '',
-      class10_score: draftData.class10Score || null,
-      inter_pathway: draftData.interPathway || 'Class 12 / Intermediate',
-      inter_score: draftData.interScore || null,
-      ug_degree: draftData.ugDegree || 'B.Tech / B.E.',
-      university: draftData.university || '',
-      department: draftData.department || '',
-      cgpa: draftData.cgpa || '',
-      passing_year: draftData.passingYear || '2026',
-      has_experience: draftData.hasExperience || 'No',
-      experience_details: draftData.experienceDetails || '',
-      purpose_to_join: draftData.statementOfPurpose || '',
-      status: (existingIdx !== -1 && existingApps[existingIdx].status && existingApps[existingIdx].status !== 'Draft') 
-        ? existingApps[existingIdx].status 
-        : 'Submitted',
-      document_status: 'Pending Review',
-      cohort: draftData.cohort || 'January 2027 Intake',
-      submitted_at: (existingIdx !== -1 && existingApps[existingIdx].submitted_at) ? existingApps[existingIdx].submitted_at : now,
-      updated_at: now,
-      isMock: false
-    };
-    if (existingIdx !== -1) {
-      existingApps[existingIdx] = { ...existingApps[existingIdx], ...candidateAppObj };
-    } else {
-      existingApps.unshift(candidateAppObj);
-    }
-    safeJsonSet(LOCAL_STORAGE_APPS_KEY, existingApps);
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('msit:application-status-updated', { detail: candidateAppObj }));
+    if (existingIdx !== -1 && existingApps[existingIdx].status !== 'Draft') {
+      // Keep existing submitted status intact
+      existingApps[existingIdx] = {
+        ...existingApps[existingIdx],
+        updated_at: now
+      };
+      safeJsonSet(LOCAL_STORAGE_APPS_KEY, existingApps);
     }
   } catch (e) {}
 

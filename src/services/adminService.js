@@ -753,6 +753,20 @@ export async function updateApplicationStatus(applicationId, newStatus, reason =
         .replace(/one[- ]on[- ]one interview/gi, 'one on one discussion')
     : reason;
 
+  const combinedFields = { ...(extraFields || {}) };
+  if (newStatus === 'Declined') {
+    combinedFields.final_decision = 'Declined';
+    if (!combinedFields.document_status && fallbackApp?.document_status !== 'Verified') {
+      combinedFields.document_status = 'Declined';
+    }
+    if (!combinedFields.gat_status && (!fallbackApp?.gat_status || fallbackApp.gat_status === 'Pending' || fallbackApp.gat_status === 'Scheduled')) {
+      combinedFields.gat_status = 'Cancelled';
+    }
+    if (!combinedFields.interview_status && (!fallbackApp?.interview_status || fallbackApp.interview_status === 'Pending' || fallbackApp.interview_status === 'Scheduled')) {
+      combinedFields.interview_status = 'Cancelled';
+    }
+  }
+
   // 1. Update local storage
   let localApps = [];
   let previousStatus = null;
@@ -769,7 +783,7 @@ export async function updateApplicationStatus(applicationId, newStatus, reason =
       localApps[idx] = {
         ...localApps[idx],
         ...(fallbackApp || {}),
-        ...(extraFields || {}),
+        ...combinedFields,
         status: newStatus,
         decision_reason: cleanReason,
         decided_by: adminEmail,
@@ -783,7 +797,7 @@ export async function updateApplicationStatus(applicationId, newStatus, reason =
       previousStatus = base.status || 'Submitted';
       updatedApp = enrichApplicationRecord({
         ...base,
-        ...(extraFields || {}),
+        ...combinedFields,
         application_id: applicationId || base.application_id,
         status: newStatus,
         decision_reason: reason,
@@ -827,7 +841,7 @@ export async function updateApplicationStatus(applicationId, newStatus, reason =
         decided_by: adminEmail,
         decided_at: now,
         updated_at: now,
-        ...(extraFields || {})
+        ...combinedFields
       };
 
       let query = supabase.from('applications').update(updatePayload);
@@ -897,6 +911,7 @@ export async function updateApplicationStatus(applicationId, newStatus, reason =
 export async function updateDocumentStatus(applicationId, docId, newDocStatus, rejectionReason = null, adminEmail = 'admin') {
   const now = new Date().toISOString();
   let updatedApp = null;
+  const isUuid = (val) => Boolean(val && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(val).trim()));
 
   try {
     const localApps = JSON.parse(localStorage.getItem(ADMIN_LOCAL_STORAGE_APPS_KEY) || '[]');
@@ -930,12 +945,49 @@ export async function updateDocumentStatus(applicationId, docId, newDocStatus, r
         localApps[appIdx] = app;
         updatedApp = app;
         localStorage.setItem(ADMIN_LOCAL_STORAGE_APPS_KEY, JSON.stringify(localApps));
+
+        const candidateEmail = (app.email || '').toLowerCase().trim();
+        if (candidateEmail) {
+          try {
+            localStorage.setItem(`msit_student_application_${candidateEmail}`, JSON.stringify(app));
+          } catch (_) {}
+        }
+
         if (typeof window !== 'undefined') {
           window.dispatchEvent(new CustomEvent('msit:application-status-updated', { detail: updatedApp }));
+          window.dispatchEvent(new CustomEvent('msit:student-status-changed', { detail: { email: candidateEmail, status: app.status, app: updatedApp } }));
         }
       }
     }
   } catch (e) {}
+
+  // Sync to Supabase
+  if (isSupabaseConfigured() && supabase) {
+    try {
+      let query = supabase.from('applications').update({
+        document_status: updatedApp?.document_status || (newDocStatus === 'Rejected' ? 'Rejected' : 'Verified'),
+        updated_at: now
+      });
+      if (isUuid(applicationId)) query = query.eq('id', applicationId);
+      else query = query.eq('application_id', applicationId);
+      await query;
+
+      if (docId) {
+        let docQuery = supabase.from('application_documents').update({
+          status: newDocStatus,
+          rejection_reason: newDocStatus === 'Rejected' ? rejectionReason : null,
+          reviewed_by: adminEmail,
+          reviewed_at: now
+        });
+        if (isUuid(docId)) docQuery = docQuery.eq('id', docId);
+        else if (isUuid(applicationId)) docQuery = docQuery.eq('application_id', applicationId);
+        else docQuery = docQuery.eq('file_name', docId);
+        await docQuery.catch(() => {});
+      }
+    } catch (err) {
+      console.warn('[MSIT Admin] Supabase doc status sync warning:', err);
+    }
+  }
 
   return { success: true, updatedApp };
 }

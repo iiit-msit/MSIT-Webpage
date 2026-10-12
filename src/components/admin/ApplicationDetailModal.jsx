@@ -108,12 +108,14 @@ export default function ApplicationDetailModal({
 
   // Workflow evaluation state
   const [workflowGatDate, setWorkflowGatDate] = useState(application?.gat_exam_date || '');
+  const [workflowGatLocation, setWorkflowGatLocation] = useState(application?.gat_location || 'IIITH Nilgiri');
   const [workflowGatScore, setWorkflowGatScore] = useState(application?.gat_score || '');
   const [workflowGatResult, setWorkflowGatResult] = useState(application?.gat_result || 'Pending');
   const [workflowGatStatus, setWorkflowGatStatus] = useState(application?.gat_status || 'Pending');
 
   const [workflowInterviewDate, setWorkflowInterviewDate] = useState(application?.interview_date || '');
   const [workflowInterviewTime, setWorkflowInterviewTime] = useState(application?.interview_time || '');
+  const [workflowInterviewLocation, setWorkflowInterviewLocation] = useState(application?.interview_location || 'IIITH Nilgiri');
   const [workflowInterviewOutcome, setWorkflowInterviewOutcome] = useState(application?.interview_outcome || 'Pending');
   const [workflowInterviewStatus, setWorkflowInterviewStatus] = useState(application?.interview_status || 'Pending');
 
@@ -146,11 +148,13 @@ export default function ApplicationDetailModal({
         grading_scale: currentApp.grading_scale || 'Percentage (out of 100%)'
       });
       setWorkflowGatDate(currentApp.gat_exam_date || '');
+      setWorkflowGatLocation(currentApp.gat_location || 'IIITH Nilgiri');
       setWorkflowGatScore(currentApp.gat_score || '');
       setWorkflowGatResult(currentApp.gat_result || 'Pending');
       setWorkflowGatStatus(currentApp.gat_status || 'Pending');
       setWorkflowInterviewDate(currentApp.interview_date || '');
       setWorkflowInterviewTime(currentApp.interview_time || '');
+      setWorkflowInterviewLocation(currentApp.interview_location || 'IIITH Nilgiri');
       setWorkflowInterviewOutcome(currentApp.interview_outcome || 'Pending');
       setWorkflowInterviewStatus(currentApp.interview_status || 'Pending');
       setWorkflowOnboardingDate(currentApp.onboarding_date || '');
@@ -190,11 +194,13 @@ export default function ApplicationDetailModal({
     try {
       const patch = {
         gat_exam_date: workflowGatDate,
+        gat_location: workflowGatLocation,
         gat_score: workflowGatScore,
         gat_result: workflowGatResult,
         gat_status: workflowGatStatus,
         interview_date: workflowInterviewDate,
         interview_time: workflowInterviewTime,
+        interview_location: workflowInterviewLocation,
         interview_outcome: workflowInterviewOutcome,
         interview_status: workflowInterviewStatus,
         onboarding_date: workflowOnboardingDate,
@@ -1179,6 +1185,17 @@ export default function ApplicationDetailModal({
                       </div>
 
                       <div className="form-field-group">
+                        <label style={{ fontSize: '0.8rem', fontWeight: 600 }}>Examination Venue</label>
+                        <input 
+                          type="text"
+                          className="form-control"
+                          placeholder="e.g. IIITH Nilgiri"
+                          value={workflowGatLocation}
+                          onChange={e => setWorkflowGatLocation(e.target.value)}
+                        />
+                      </div>
+
+                      <div className="form-field-group">
                         <label style={{ fontSize: '0.8rem', fontWeight: 600 }}>MSIT PGEE Score</label>
                         <input 
                           type="text"
@@ -1212,9 +1229,13 @@ export default function ApplicationDetailModal({
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginTop: '0.75rem' }}>
                       <div className="form-field-group">
                         <label style={{ fontSize: '0.8rem', fontWeight: 600 }}>Interview Venue</label>
-                        <div style={{ padding: '0.55rem 0.75rem', background: '#f1f5f9', borderRadius: '6px', fontSize: '0.85rem', fontWeight: 600, color: '#0f172a', border: '1px solid #e2e8f0' }}>
-                          IIITH Nilgiri (In-Person)
-                        </div>
+                        <input 
+                          type="text"
+                          className="form-control"
+                          placeholder="e.g. IIITH Nilgiri"
+                          value={workflowInterviewLocation}
+                          onChange={e => setWorkflowInterviewLocation(e.target.value)}
+                        />
                       </div>
 
                       <div className="form-field-group">

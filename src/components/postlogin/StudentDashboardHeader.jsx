@@ -166,7 +166,7 @@ export default function StudentDashboardHeader({
       badgeBorder: '#fde68a',
       dotColor: '#f59e0b',
       title: 'MSIT PGEE Entrance Exam Scheduled',
-      description: `You are scheduled for the MSIT PGEE Exam on ${application?.gat_exam_date || admissionSettings?.gatExamDate || 'December 15, 2026'}${application?.gat_slot ? ` (${application.gat_slot})` : ''} at IIITH Nilgiri. Successful completion qualifies you for the one-on-one discussion.`,
+      description: `You are scheduled for the MSIT PGEE Exam on ${application?.gat_exam_date || admissionSettings?.gatExamDate || 'December 15, 2026'}${application?.gat_slot ? ` (${application.gat_slot})` : ''} at ${application?.gat_location || 'IIITH Nilgiri'}. Successful completion qualifies you for the one-on-one discussion.`,
       noteIcon: <ClockIcon size={16} />,
       noteBg: '#fffbeb',
       noteBorder: '#fde68a',

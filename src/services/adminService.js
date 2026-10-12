@@ -363,6 +363,7 @@ export function enrichApplicationRecord(app, localApps = []) {
     gat_exam_date: getCleanVal(app.gat_exam_date, fallback.gat_exam_date, localMatch?.gat_exam_date),
     gat_slot: getCleanVal(app.gat_slot, fallback.gat_slot, localMatch?.gat_slot),
     gat_mode: getCleanVal(app.gat_mode, fallback.gat_mode, localMatch?.gat_mode),
+    gat_location: getCleanVal(app.gat_location, fallback.gat_location, localMatch?.gat_location, 'IIITH Nilgiri'),
     gat_status: getCleanVal(app.gat_status, fallback.gat_status, localMatch?.gat_status),
     gat_score: getCleanVal(app.gat_score, fallback.gat_score, localMatch?.gat_score),
     gat_result: getCleanVal(app.gat_result, fallback.gat_result, localMatch?.gat_result),
@@ -404,6 +405,7 @@ export function enrichApplicationRecord(app, localApps = []) {
     if (localMatch.gat_exam_date) enriched.gat_exam_date = localMatch.gat_exam_date;
     if (localMatch.gat_slot) enriched.gat_slot = localMatch.gat_slot;
     if (localMatch.gat_mode) enriched.gat_mode = localMatch.gat_mode;
+    if (localMatch.gat_location) enriched.gat_location = localMatch.gat_location;
     if (localMatch.gat_status) enriched.gat_status = localMatch.gat_status;
   }
   if (email && typeof localStorage !== 'undefined') {

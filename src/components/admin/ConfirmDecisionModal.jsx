@@ -39,6 +39,7 @@ export default function ConfirmDecisionModal({
         if (applicationData.gat_exam_date) setGatDate(applicationData.gat_exam_date);
         if (applicationData.gat_slot) setGatSlot(applicationData.gat_slot);
         if (applicationData.gat_mode) setGatMode(applicationData.gat_mode);
+        if (applicationData.gat_location) setGatLocation(applicationData.gat_location);
       }
     }
   }, [isOpen, applicationData, decisionType]);
@@ -73,28 +74,30 @@ export default function ConfirmDecisionModal({
         setError('Please select an interview date.');
         return;
       }
+      const trimmedInterviewLoc = (interviewLocation || '').trim() || 'IIITH Nilgiri';
       if (!finalReason) {
-        finalReason = `Shortlisted for in-person one on one discussion on ${interviewDate} at ${interviewTime} at IIITH Nilgiri.`;
+        finalReason = `Shortlisted for in-person one on one discussion on ${interviewDate} at ${interviewTime} at ${trimmedInterviewLoc}.`;
       }
       extraPayload.status = 'Interview Scheduled';
       extraPayload.interview_date = interviewDate;
       extraPayload.interview_time = interviewTime;
-      extraPayload.interview_mode = 'In-Person (IIITH Nilgiri)';
-      extraPayload.interview_location = 'IIITH Nilgiri';
+      extraPayload.interview_mode = interviewMode || 'In-Person (IIITH Nilgiri)';
+      extraPayload.interview_location = trimmedInterviewLoc;
       extraPayload.interview_status = 'Scheduled';
     } else if (isPgee) {
       if (!gatDate) {
         setError('Please specify the MSIT PGEE exam date.');
         return;
       }
+      const trimmedGatLoc = (gatLocation || '').trim() || 'IIITH Nilgiri';
       if (!finalReason) {
-        finalReason = `Scheduled for MSIT PGEE Entrance Examination on ${gatDate} (${gatSlot}) at IIITH Nilgiri.`;
+        finalReason = `Scheduled for MSIT PGEE Entrance Examination on ${gatDate} (${gatSlot}) at ${trimmedGatLoc}.`;
       }
       extraPayload.status = 'Scheduled for MSIT PGEE Exam';
       extraPayload.gat_exam_date = gatDate;
       extraPayload.gat_slot = gatSlot;
-      extraPayload.gat_mode = 'In-Person (IIITH Nilgiri)';
-      extraPayload.gat_location = 'IIITH Nilgiri';
+      extraPayload.gat_mode = gatMode || 'In-Person (IIITH Nilgiri)';
+      extraPayload.gat_location = trimmedGatLoc;
       extraPayload.gat_status = 'Scheduled';
     } else if (isAccept) {
       if (!finalReason) {
@@ -212,14 +215,26 @@ export default function ConfirmDecisionModal({
                 </div>
               </div>
 
-              <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '0.75rem 1rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div>
-                  <span style={{ fontSize: '0.74rem', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '700', display: 'block' }}>Interview Venue</span>
-                  <strong style={{ fontSize: '0.92rem', color: '#0f172a' }}>IIITH Nilgiri</strong>
+              <div className="form-field-group" style={{ marginBottom: '1rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.35rem' }}>
+                  <label htmlFor="interviewLocationInput" style={{ fontSize: '0.82rem', fontWeight: 600, margin: 0 }}>
+                    Interview Venue <span className="req">*</span>
+                  </label>
+                  <span style={{ background: '#dbeafe', color: '#1e40af', fontSize: '0.74rem', fontWeight: '700', padding: '0.15rem 0.5rem', borderRadius: '4px' }}>
+                    🏛️ Discussion Center
+                  </span>
                 </div>
-                <span style={{ background: '#dbeafe', color: '#1e40af', fontSize: '0.75rem', fontWeight: '700', padding: '0.25rem 0.6rem', borderRadius: '4px' }}>
-                  🏛️ IIITH Campus
-                </span>
+                <input
+                  id="interviewLocationInput"
+                  type="text"
+                  className="form-control"
+                  placeholder="e.g. IIITH Nilgiri"
+                  value={interviewLocation}
+                  onChange={e => {
+                    setInterviewLocation(e.target.value);
+                    if (error) setError('');
+                  }}
+                />
               </div>
             </>
           )}
@@ -269,14 +284,26 @@ export default function ConfirmDecisionModal({
                 </div>
               </div>
 
-              <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '0.75rem 1rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div>
-                  <span style={{ fontSize: '0.74rem', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '700', display: 'block' }}>Examination Venue</span>
-                  <strong style={{ fontSize: '0.92rem', color: '#0f172a' }}>IIITH Nilgiri</strong>
+              <div className="form-field-group" style={{ marginBottom: '1rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.35rem' }}>
+                  <label htmlFor="gatLocationInput" style={{ fontSize: '0.82rem', fontWeight: 600, margin: 0 }}>
+                    Examination Venue <span className="req">*</span>
+                  </label>
+                  <span style={{ background: '#fef3c7', color: '#92400e', fontSize: '0.74rem', fontWeight: '700', padding: '0.15rem 0.5rem', borderRadius: '4px' }}>
+                    🏛️ Exam Center
+                  </span>
                 </div>
-                <span style={{ background: '#fef3c7', color: '#92400e', fontSize: '0.75rem', fontWeight: '700', padding: '0.25rem 0.6rem', borderRadius: '4px' }}>
-                  🏛️ IIITH Campus
-                </span>
+                <input
+                  id="gatLocationInput"
+                  type="text"
+                  className="form-control"
+                  placeholder="e.g. IIITH Nilgiri"
+                  value={gatLocation}
+                  onChange={e => {
+                    setGatLocation(e.target.value);
+                    if (error) setError('');
+                  }}
+                />
               </div>
             </>
           )}

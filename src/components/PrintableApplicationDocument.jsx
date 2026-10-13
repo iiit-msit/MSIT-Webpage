@@ -102,7 +102,7 @@ export default function PrintableApplicationDocument({ formData = {}, serverApp 
             <h1 className="print-institution-title">CONSORTIUM OF INSTITUTIONS OF HIGHER LEARNING (CIHL)</h1>
             <h2 className="print-programme-title">MASTER OF SCIENCE IN INFORMATION TECHNOLOGY (MSIT)</h2>
             <p className="print-campus-address">
-              IIIT Hyderabad Campus, Gachibowli, Hyderabad - 500032, Telangana, India • Website: www.msitprogram.net
+              IIIT Hyderabad Campus, Gachibowli, Hyderabad - 500032, Telangana, India • Website: www.msit.ac.in
             </p>
           </div>
           <div className="print-header-badge-col">
@@ -256,7 +256,7 @@ export default function PrintableApplicationDocument({ formData = {}, serverApp 
         {/* Section 5: Statement of Purpose (Compact 2-Line Excerpt) */}
         <div className="print-section">
           <div className="print-section-heading">
-            <span>4. STATEMENT OF PURPOSE (APPLICANT SUBMISSION EXCERPT)</span>
+            <span>4. STATEMENT OF PURPOSE</span>
           </div>
           <div className="print-sop-container">
             <p className="print-sop-text">

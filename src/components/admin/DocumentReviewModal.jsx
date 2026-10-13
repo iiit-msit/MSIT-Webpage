@@ -122,55 +122,92 @@ export default function DocumentReviewModal({
                     }
                   } catch (e) {}
 
-                  // Discover files from Supabase Storage by listing applicant's user_id folder
-                  const userId = application?.user_id;
-                  if (userId && isSupabaseConfigured() && supabase) {
+                  // Discover files from Supabase Storage by listing applicant's storage folders
+                  if (isSupabaseConfigured() && supabase) {
                     try {
-                      const { data: subItems } = await supabase.storage
-                        .from('application-documents')
-                        .list(userId, { limit: 200 });
-                      if (subItems && subItems.length > 0) {
-                        let allFiles = [];
-                        for (const item of subItems) {
-                          if (item.metadata && item.name) {
-                            allFiles.push({ path: `${userId}/${item.name}`, name: item.name });
-                          } else if (item.name) {
-                            const { data: files } = await supabase.storage
-                              .from('application-documents')
-                              .list(`${userId}/${item.name}`, { limit: 200 });
-                            if (files) {
-                              files.forEach(f => {
-                                if (f.name) allFiles.push({ path: `${userId}/${item.name}/${f.name}`, name: f.name });
-                              });
+                      const candidateUserIds = new Set();
+                      if (application?.user_id) candidateUserIds.add(application.user_id);
+                      if (application?.userId) candidateUserIds.add(application.userId);
+
+                      if (candidateUserIds.size === 0) {
+                        const { data: rootItems } = await supabase.storage
+                          .from('application-documents')
+                          .list('', { limit: 100 });
+                        if (Array.isArray(rootItems)) {
+                          rootItems.forEach(r => {
+                            if (r.name && !r.name.includes('.')) candidateUserIds.add(r.name);
+                          });
+                        }
+                      }
+
+                      let allFiles = [];
+                      for (const uid of Array.from(candidateUserIds)) {
+                        const { data: subItems } = await supabase.storage
+                          .from('application-documents')
+                          .list(uid, { limit: 200 });
+
+                        const foldersToCheck = new Set([`${uid}/new`]);
+                        if (application?.application_id) foldersToCheck.add(`${uid}/${application.application_id}`);
+
+                        if (subItems && subItems.length > 0) {
+                          for (const item of subItems) {
+                            const isFolder = !item.name.includes('.') || !item.id || item.id === null;
+                            if (!isFolder) {
+                              allFiles.push({ path: `${uid}/${item.name}`, name: item.name });
+                            } else if (item.name && item.name !== '.emptyFolderPlaceholder') {
+                              foldersToCheck.add(`${uid}/${item.name}`);
                             }
                           }
                         }
-                        const docTypeStr = (document.doc_type || document.docType || '').toLowerCase();
-                        const matched = allFiles.find(f => {
-                          const fn = f.name.toLowerCase();
-                          if ((docTypeStr.includes('transcript') || docTypeStr.includes('marksheet') || docTypeStr.includes('b.tech')) && (fn.includes('degree_marksheet') || fn.includes('consolidated') || fn.includes('transcript'))) return true;
-                          if ((docTypeStr.includes('class 10') || docTypeStr.includes('ssc') || docTypeStr.includes('secondary')) && (fn.includes('class_10') || fn.includes('ssc'))) return true;
-                          if ((docTypeStr.includes('class 12') || docTypeStr.includes('inter')) && (fn.includes('intermediate') || fn.includes('class_12'))) return true;
-                          if ((docTypeStr.includes('degree') && (docTypeStr.includes('cert') || docTypeStr.includes('provisional'))) && (fn.includes('degree_certificate') || fn.includes('provisional'))) return true;
-                          if ((docTypeStr.includes('cv') || docTypeStr.includes('resume')) && (fn.includes('curriculum_vitae') || fn.includes('cv') || fn.includes('resume'))) return true;
-                          if ((docTypeStr.includes('gre') || docTypeStr.includes('gate')) && (fn.includes('gre') || fn.includes('gate'))) return true;
-                          return false;
-                        });
-                        if (matched) {
-                          const { data: fileBlob } = await supabase.storage
+
+                        for (const subPath of Array.from(foldersToCheck)) {
+                          const { data: files } = await supabase.storage
                             .from('application-documents')
-                            .download(matched.path);
-                          if (fileBlob) {
-                            openDocumentInNewTab(URL.createObjectURL(fileBlob), document.file_name);
-                            return;
+                            .list(subPath, { limit: 200 });
+                          if (files) {
+                            files.forEach(f => {
+                              if (f.name && f.name.includes('.') && f.name !== '.emptyFolderPlaceholder') {
+                                allFiles.push({ path: `${subPath}/${f.name}`, name: f.name });
+                              }
+                            });
                           }
-                          const { data: signedData } = await supabase.storage
-                            .from('application-documents')
-                            .createSignedUrl(matched.path, 3600);
-                          if (signedData?.signedUrl) {
-                            openDocumentInNewTab(signedData.signedUrl, document.file_name);
-                            return;
-                          }
+                        }
+                      }
+
+                      const docTypeStr = (document.doc_type || document.docType || '').toLowerCase();
+                      const matched = allFiles.find(f => {
+                        const fn = f.name.toLowerCase();
+                        if ((docTypeStr.includes('transcript') || docTypeStr.includes('marksheet') || docTypeStr.includes('b.tech') || docTypeStr.includes('qualifying')) &&
+                            (fn.includes('degree_marksheet') || fn.includes('consolidated') || fn.includes('transcript') || fn.includes('btech') || fn.includes('degree_certificate') || fn.includes('provisional'))) return true;
+                        if ((docTypeStr.includes('class 10') || docTypeStr.includes('ssc') || docTypeStr.includes('secondary')) && (fn.includes('class_10') || fn.includes('ssc') || fn.includes('10th'))) return true;
+                        if ((docTypeStr.includes('class 12') || docTypeStr.includes('inter') || docTypeStr.includes('diploma')) && (fn.includes('intermediate') || fn.includes('class_12') || fn.includes('12th'))) return true;
+                        if ((docTypeStr.includes('degree') && (docTypeStr.includes('cert') || docTypeStr.includes('provisional'))) && (fn.includes('degree_certificate') || fn.includes('provisional') || fn.includes('degree_marksheet'))) return true;
+                        if ((docTypeStr.includes('cv') || docTypeStr.includes('resume')) && (fn.includes('curriculum_vitae') || fn.includes('cv') || fn.includes('resume'))) return true;
+                        if ((docTypeStr.includes('gre') || docTypeStr.includes('gate')) && (fn.includes('gre') || fn.includes('gate') || fn.includes('scorecard'))) return true;
+                        return false;
+                      });
+
+                      if (matched) {
+                        const { data: fileBlob } = await supabase.storage
+                          .from('application-documents')
+                          .download(matched.path);
+                        if (fileBlob && fileBlob.size > 0) {
+                          openDocumentInNewTab(URL.createObjectURL(fileBlob), document.file_name);
+                          return;
+                        }
+                        const { data: signedData } = await supabase.storage
+                          .from('application-documents')
+                          .createSignedUrl(matched.path, 3600);
+                        if (signedData?.signedUrl) {
+                          openDocumentInNewTab(signedData.signedUrl, document.file_name);
+                          return;
+                        }
+                        const { data: pubData } = supabase.storage
+                          .from('application-documents')
+                          .getPublicUrl(matched.path);
+                        if (pubData?.publicUrl) {
+                          openDocumentInNewTab(pubData.publicUrl, document.file_name);
+                          return;
                         }
                       }
                     } catch (e) {

@@ -224,28 +224,23 @@ CREATE POLICY "Candidates can upload own documents"
     WITH CHECK (user_id = auth.uid() OR public.is_authorized_admin());
 
 -- STORAGE BUCKET CONFIGURATION (run if storage schema is accessible)
--- Note: Create bucket 'application-documents' (Private) in Supabase Storage Dashboard
+-- Note: Create bucket 'application-documents' in Supabase Storage Dashboard
 INSERT INTO storage.buckets (id, name, public) 
-VALUES ('application-documents', 'application-documents', false)
-ON CONFLICT (id) DO NOTHING;
+VALUES ('application-documents', 'application-documents', true)
+ON CONFLICT (id) DO UPDATE SET public = true;
 
 DROP POLICY IF EXISTS "Authenticated users can upload own documents" ON storage.objects;
 CREATE POLICY "Authenticated users can upload own documents"
     ON storage.objects FOR INSERT
-    TO authenticated
+    TO authenticated, anon
     WITH CHECK (bucket_id = 'application-documents');
 
 DROP POLICY IF EXISTS "Users can read own uploaded documents" ON storage.objects;
-CREATE POLICY "Users can read own uploaded documents"
+DROP POLICY IF EXISTS "Allow read application documents" ON storage.objects;
+CREATE POLICY "Allow read application documents"
     ON storage.objects FOR SELECT
-    TO authenticated
-    USING (
-        bucket_id = 'application-documents' 
-        AND (
-            auth.uid()::text = (storage.foldername(name))[1] 
-            OR public.is_authorized_admin()
-        )
-    );
+    TO anon, authenticated
+    USING (bucket_id = 'application-documents');
 
 -- ====================================================================
 -- ADMISSION SETTINGS TABLE

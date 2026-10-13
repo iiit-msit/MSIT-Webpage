@@ -178,7 +178,7 @@ export default function CertificateModal({
         }
       }
 
-      // 5. Download original file directly from Supabase Storage using active authenticated session
+      // 5. Download original file directly from Supabase Storage
       if (storagePath && isSupabaseConfigured() && supabase) {
         try {
           // Attempt authenticated Blob download
@@ -186,7 +186,7 @@ export default function CertificateModal({
             .from('application-documents')
             .download(storagePath);
 
-          if (!dlErr && fileBlob) {
+          if (!dlErr && fileBlob && fileBlob.size > 0) {
             localBlobUrl = URL.createObjectURL(fileBlob);
             if (!isCancelled) {
               setResolvedUrl(localBlobUrl);
@@ -195,7 +195,7 @@ export default function CertificateModal({
             return;
           }
 
-          // Fallback: Generate authenticated signed URL from Supabase Storage
+          // Fallback A: Generate signed URL from Supabase Storage
           const { data: signedData, error: signErr } = await supabase.storage
             .from('application-documents')
             .createSignedUrl(storagePath, 3600);
@@ -206,6 +206,25 @@ export default function CertificateModal({
               setIsLoadingFile(false);
             }
             return;
+          }
+
+          // Fallback B: Public URL
+          const { data: pubData } = supabase.storage
+            .from('application-documents')
+            .getPublicUrl(storagePath);
+          if (pubData?.publicUrl) {
+            try {
+              const res = await fetch(pubData.publicUrl);
+              if (res.ok) {
+                const b = await res.blob();
+                localBlobUrl = URL.createObjectURL(b);
+                if (!isCancelled) {
+                  setResolvedUrl(localBlobUrl);
+                  setIsLoadingFile(false);
+                }
+                return;
+              }
+            } catch (e) {}
           }
         } catch (stErr) {
           console.warn('[MSIT] Supabase Storage download exception:', stErr);
@@ -223,7 +242,7 @@ export default function CertificateModal({
               const { data: fileBlob } = await supabase.storage
                 .from('application-documents')
                 .download(extractedPath);
-              if (fileBlob) {
+              if (fileBlob && fileBlob.size > 0) {
                 localBlobUrl = URL.createObjectURL(fileBlob);
                 if (!isCancelled) {
                   setResolvedUrl(localBlobUrl);
@@ -283,44 +302,72 @@ export default function CertificateModal({
         console.warn('[MSIT] IndexedDB document lookup warning:', e);
       }
 
-      // 8. Discover files from Supabase Storage bucket by listing applicant's user_id folder
-      if (isSupabaseConfigured() && supabase && activeApp?.user_id) {
+      // 8. Discover files from Supabase Storage bucket by listing applicant's storage folders
+      if (isSupabaseConfigured() && supabase) {
         try {
-          const userId = activeApp.user_id;
-          // List subfolders/files under this user's storage folder
-          const { data: subItems } = await supabase.storage
-            .from('application-documents')
-            .list(userId, { limit: 200 });
+          const candidateUserIds = new Set();
+          if (activeApp?.user_id) candidateUserIds.add(activeApp.user_id);
+          if (activeApp?.userId) candidateUserIds.add(activeApp.userId);
 
-          if (subItems && subItems.length > 0) {
-            let allStorageFiles = [];
-            for (const item of subItems) {
-              if (item.metadata && item.name) {
-                // Direct file under userId/
-                allStorageFiles.push({ path: `${userId}/${item.name}`, name: item.name });
-              } else if (item.name) {
-                // Subfolder – list its contents
-                const { data: files } = await supabase.storage
-                  .from('application-documents')
-                  .list(`${userId}/${item.name}`, { limit: 200 });
-                if (files) {
-                  files.forEach(f => {
-                    if (f.name) {
-                      allStorageFiles.push({ path: `${userId}/${item.name}/${f.name}`, name: f.name });
-                    }
-                  });
+          // If no user_id on activeApp, discover from storage bucket root
+          if (candidateUserIds.size === 0) {
+            const { data: rootItems } = await supabase.storage
+              .from('application-documents')
+              .list('', { limit: 100 });
+            if (Array.isArray(rootItems)) {
+              rootItems.forEach(r => {
+                if (r.name && !r.name.includes('.')) {
+                  candidateUserIds.add(r.name);
+                }
+              });
+            }
+          }
+
+          let allStorageFiles = [];
+          for (const uid of Array.from(candidateUserIds)) {
+            // Check uid root
+            const { data: subItems } = await supabase.storage
+              .from('application-documents')
+              .list(uid, { limit: 200 });
+
+            const foldersToCheck = new Set([`${uid}/new`]);
+            if (activeApp?.application_id) {
+              foldersToCheck.add(`${uid}/${activeApp.application_id}`);
+            }
+
+            if (subItems && subItems.length > 0) {
+              for (const item of subItems) {
+                const isFolder = !item.name.includes('.') || !item.id || item.id === null;
+                if (!isFolder) {
+                  allStorageFiles.push({ path: `${uid}/${item.name}`, name: item.name });
+                } else if (item.name && item.name !== '.emptyFolderPlaceholder') {
+                  foldersToCheck.add(`${uid}/${item.name}`);
                 }
               }
             }
 
+            for (const subPath of Array.from(foldersToCheck)) {
+              const { data: files } = await supabase.storage
+                .from('application-documents')
+                .list(subPath, { limit: 200 });
+              if (files) {
+                files.forEach(f => {
+                  if (f.name && f.name.includes('.') && f.name !== '.emptyFolderPlaceholder') {
+                    allStorageFiles.push({ path: `${subPath}/${f.name}`, name: f.name });
+                  }
+                });
+              }
+            }
+          }
+
+          if (allStorageFiles.length > 0) {
             // Match storage file to the requested document type
             const docId = (activeDoc.id || '').toLowerCase();
             const docTypeStr = (activeDoc.docType || activeDoc.doc_type || '').toLowerCase();
             const matchedFile = allStorageFiles.find(f => {
               const fn = f.name.toLowerCase();
-              // Match by doc ID / type keywords
-              if ((docId === 'btech' || docTypeStr.includes('transcript') || docTypeStr.includes('marksheet') || docTypeStr.includes('b.tech') || docTypeStr.includes('b.e.')) &&
-                  (fn.includes('degree_marksheet') || fn.includes('consolidated') || fn.includes('transcript') || fn.includes('btech') || fn.includes('b_tech')))
+              if ((docId === 'btech' || docTypeStr.includes('transcript') || docTypeStr.includes('marksheet') || docTypeStr.includes('b.tech') || docTypeStr.includes('b.e.') || docTypeStr.includes('qualifying')) &&
+                  (fn.includes('degree_marksheet') || fn.includes('consolidated') || fn.includes('transcript') || fn.includes('btech') || fn.includes('b_tech') || fn.includes('degree_certificate') || fn.includes('provisional')))
                 return true;
               if ((docId === '10th' || docTypeStr.includes('class 10') || docTypeStr.includes('ssc') || docTypeStr.includes('secondary')) &&
                   (fn.includes('class_10') || fn.includes('ssc') || fn.includes('10th')))
@@ -328,8 +375,8 @@ export default function CertificateModal({
               if ((docId === '12th' || docTypeStr.includes('class 12') || docTypeStr.includes('inter') || docTypeStr.includes('diploma')) &&
                   (fn.includes('intermediate') || fn.includes('class_12') || fn.includes('12th')))
                 return true;
-              if ((docId === 'degreecert' || docTypeStr.includes('degree') && (docTypeStr.includes('cert') || docTypeStr.includes('provisional'))) &&
-                  (fn.includes('degree_certificate') || fn.includes('provisional')))
+              if ((docId === 'degreecert' || (docTypeStr.includes('degree') && (docTypeStr.includes('cert') || docTypeStr.includes('provisional')))) &&
+                  (fn.includes('degree_certificate') || fn.includes('provisional') || fn.includes('degree_marksheet')))
                 return true;
               if ((docId === 'cv' || docTypeStr.includes('cv') || docTypeStr.includes('resume') || docTypeStr.includes('curriculum')) &&
                   (fn.includes('curriculum_vitae') || fn.includes('cv') || fn.includes('resume')))
@@ -344,11 +391,12 @@ export default function CertificateModal({
             });
 
             if (matchedFile) {
-              console.log(`[MSIT] Storage discovery: matched "${matchedFile.name}" for doc type "${activeDoc.docType}"`);
+              console.log(`[MSIT] Storage discovery matched "${matchedFile.name}" at ${matchedFile.path}`);
+              // Attempt Blob download
               const { data: fileBlob, error: dlErr } = await supabase.storage
                 .from('application-documents')
                 .download(matchedFile.path);
-              if (!dlErr && fileBlob) {
+              if (!dlErr && fileBlob && fileBlob.size > 0) {
                 localBlobUrl = URL.createObjectURL(fileBlob);
                 if (!isCancelled) {
                   setResolvedUrl(localBlobUrl);
@@ -356,7 +404,7 @@ export default function CertificateModal({
                 }
                 return;
               }
-              // Try signed URL as fallback
+              // Try signed URL
               const { data: signedData } = await supabase.storage
                 .from('application-documents')
                 .createSignedUrl(matchedFile.path, 3600);
@@ -366,6 +414,24 @@ export default function CertificateModal({
                   setIsLoadingFile(false);
                 }
                 return;
+              }
+              // Try public URL
+              const { data: pubData } = supabase.storage
+                .from('application-documents')
+                .getPublicUrl(matchedFile.path);
+              if (pubData?.publicUrl) {
+                try {
+                  const res = await fetch(pubData.publicUrl);
+                  if (res.ok) {
+                    const b = await res.blob();
+                    localBlobUrl = URL.createObjectURL(b);
+                    if (!isCancelled) {
+                      setResolvedUrl(localBlobUrl);
+                      setIsLoadingFile(false);
+                    }
+                    return;
+                  }
+                } catch (e) {}
               }
             }
           }

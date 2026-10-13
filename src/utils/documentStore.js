@@ -260,12 +260,7 @@ export function cleanDocUrl(fileUrl, fileName = '') {
   if (cleanName === 'MSIT_Admission_Notification_2026-27.pdf' || cleanName === 'MSIT_Student_Laptop_Specification_2027_updated.pdf') {
     return `/documents/${cleanName}`;
   }
-  if (!fileUrl) return '';
-  // Strip out broken Supabase storage bucket URLs pointing to non-existent bucket
-  if (typeof fileUrl === 'string' && fileUrl.includes('supabase.co/storage') && fileUrl.includes('application-documents')) {
-    return '';
-  }
-  return fileUrl;
+  return fileUrl || '';
 }
 
 /**
@@ -305,6 +300,8 @@ export function extractAllApplicationDocuments(app) {
         fileName: fName,
         fileSize: raw.ugDegreeDoc.fileSize || raw.ugDegreeDoc.file_size || '2.4 MB',
         fileUrl: cleanDocUrl(raw.ugDegreeDoc.fileUrl || raw.ugDegreeDoc.file_url || raw.ugDegreeDoc.dataUrl || '', fName),
+        storagePath: raw.ugDegreeDoc.storagePath || raw.ugDegreeDoc.storage_path || '',
+        dataUrl: raw.ugDegreeDoc.dataUrl || '',
         status: raw.ugDegreeDoc.status || 'Uploaded',
         uploadedAt: raw.ugDegreeDoc.uploadedAt || submittedAt
       });
@@ -317,6 +314,8 @@ export function extractAllApplicationDocuments(app) {
         fileName: fName,
         fileSize: raw.degreeCertDoc.fileSize || raw.degreeCertDoc.file_size || '1.8 MB',
         fileUrl: cleanDocUrl(raw.degreeCertDoc.fileUrl || raw.degreeCertDoc.file_url || raw.degreeCertDoc.dataUrl || '', fName),
+        storagePath: raw.degreeCertDoc.storagePath || raw.degreeCertDoc.storage_path || '',
+        dataUrl: raw.degreeCertDoc.dataUrl || '',
         status: raw.degreeCertDoc.status || 'Uploaded',
         uploadedAt: raw.degreeCertDoc.uploadedAt || submittedAt
       });
@@ -329,6 +328,8 @@ export function extractAllApplicationDocuments(app) {
         fileName: fName,
         fileSize: raw.class10Doc.fileSize || raw.class10Doc.file_size || '1.5 MB',
         fileUrl: cleanDocUrl(raw.class10Doc.fileUrl || raw.class10Doc.file_url || raw.class10Doc.dataUrl || '', fName),
+        storagePath: raw.class10Doc.storagePath || raw.class10Doc.storage_path || '',
+        dataUrl: raw.class10Doc.dataUrl || '',
         status: raw.class10Doc.status || 'Uploaded',
         uploadedAt: raw.class10Doc.uploadedAt || submittedAt
       });
@@ -341,8 +342,24 @@ export function extractAllApplicationDocuments(app) {
         fileName: fName,
         fileSize: raw.class12Doc.fileSize || raw.class12Doc.file_size || '1.6 MB',
         fileUrl: cleanDocUrl(raw.class12Doc.fileUrl || raw.class12Doc.file_url || raw.class12Doc.dataUrl || '', fName),
+        storagePath: raw.class12Doc.storagePath || raw.class12Doc.storage_path || '',
+        dataUrl: raw.class12Doc.dataUrl || '',
         status: raw.class12Doc.status || 'Uploaded',
         uploadedAt: raw.class12Doc.uploadedAt || submittedAt
+      });
+    }
+    if (raw.additionalDegree16YearDoc) {
+      const fName = raw.additionalDegree16YearDoc.fileName || raw.additionalDegree16YearDoc.file_name || 'Additional_Degree_Certificate.pdf';
+      addDoc('16year', {
+        key: 'additionalDegree16YearDoc',
+        docType: 'Additional Qualifying Degree Certificate',
+        fileName: fName,
+        fileSize: raw.additionalDegree16YearDoc.fileSize || raw.additionalDegree16YearDoc.file_size || '1.8 MB',
+        fileUrl: cleanDocUrl(raw.additionalDegree16YearDoc.fileUrl || raw.additionalDegree16YearDoc.file_url || raw.additionalDegree16YearDoc.dataUrl || '', fName),
+        storagePath: raw.additionalDegree16YearDoc.storagePath || raw.additionalDegree16YearDoc.storage_path || '',
+        dataUrl: raw.additionalDegree16YearDoc.dataUrl || '',
+        status: raw.additionalDegree16YearDoc.status || 'Uploaded',
+        uploadedAt: raw.additionalDegree16YearDoc.uploadedAt || submittedAt
       });
     }
     if (raw.greScorecardDoc || raw.gateScorecardDoc) {
@@ -354,6 +371,8 @@ export function extractAllApplicationDocuments(app) {
         fileName: fName,
         fileSize: gDoc.fileSize || gDoc.file_size || '1.1 MB',
         fileUrl: cleanDocUrl(gDoc.fileUrl || gDoc.file_url || gDoc.dataUrl || '', fName),
+        storagePath: gDoc.storagePath || gDoc.storage_path || '',
+        dataUrl: gDoc.dataUrl || '',
         status: gDoc.status || 'Uploaded',
         uploadedAt: gDoc.uploadedAt || submittedAt
       });
@@ -367,24 +386,50 @@ export function extractAllApplicationDocuments(app) {
         fileName: fName,
         fileSize: cv.fileSize || cv.file_size || '1.0 MB',
         fileUrl: cleanDocUrl(cv.fileUrl || cv.file_url || cv.dataUrl || '', fName),
+        storagePath: cv.storagePath || cv.storage_path || '',
+        dataUrl: cv.dataUrl || '',
         status: cv.status || 'Uploaded',
         uploadedAt: cv.uploadedAt || submittedAt
       });
     }
+    // Generic object items
+    Object.entries(raw).forEach(([k, docItem]) => {
+      if (docItem && typeof docItem === 'object' && !['ugDegreeDoc', 'degreeCertDoc', 'class10Doc', 'class12Doc', 'additionalDegree16YearDoc', 'greScorecardDoc', 'gateScorecardDoc', 'cvDoc', 'cvDocument'].includes(k)) {
+        const docId = docItem.id || k;
+        if (!docsMap.has(docId)) {
+          const fName = docItem.fileName || docItem.file_name || `${k}.pdf`;
+          addDoc(docId, {
+            key: k,
+            docType: docItem.docType || docItem.doc_type || k,
+            fileName: fName,
+            fileSize: docItem.fileSize || docItem.file_size || '1.5 MB',
+            fileUrl: cleanDocUrl(docItem.fileUrl || docItem.file_url || docItem.dataUrl || '', fName),
+            storagePath: docItem.storagePath || docItem.storage_path || '',
+            dataUrl: docItem.dataUrl || '',
+            status: docItem.status || 'Uploaded',
+            uploadedAt: docItem.uploadedAt || submittedAt
+          });
+        }
+      }
+    });
   }
 
   // 2. Inspect app.documents if it's an array
   if (Array.isArray(app.documents) && app.documents.length > 0) {
     app.documents.forEach((d, idx) => {
       const typeStr = (d.doc_type || d.docType || '').toLowerCase();
-      let targetId = `doc_${idx}`;
+      let targetId = d.id || `doc_${idx}`;
 
-      if (typeStr.includes('b.tech') || typeStr.includes('btech') || typeStr.includes('degree') || typeStr.includes('transcript') || typeStr.includes('undergraduate')) {
+      if (typeStr.includes('provisional') || typeStr.includes('degree cert') || typeStr.includes('degree_cert') || (typeStr.includes('degree') && !typeStr.includes('b.tech') && !typeStr.includes('btech') && !typeStr.includes('transcript') && !typeStr.includes('undergraduate'))) {
+        targetId = 'degreeCert';
+      } else if (typeStr.includes('b.tech') || typeStr.includes('btech') || typeStr.includes('transcript') || typeStr.includes('undergraduate') || typeStr.includes('marks memo') || typeStr.includes('marksheet')) {
         targetId = 'btech';
       } else if (typeStr.includes('10') || typeStr.includes('ssc') || typeStr.includes('secondary')) {
         targetId = '10th';
       } else if (typeStr.includes('12') || typeStr.includes('inter') || typeStr.includes('intermediate') || typeStr.includes('diploma')) {
         targetId = '12th';
+      } else if (typeStr.includes('16-year') || typeStr.includes('16 year') || typeStr.includes('16year')) {
+        targetId = '16year';
       } else if (typeStr.includes('gre') || typeStr.includes('gate') || typeStr.includes('scorecard')) {
         targetId = 'gr';
       } else if (typeStr.includes('cv') || typeStr.includes('resume')) {
@@ -399,6 +444,7 @@ export function extractAllApplicationDocuments(app) {
         fileSize: d.file_size || d.fileSize || '1.5 MB',
         fileUrl: cleanDocUrl(d.file_url || d.fileUrl || d.dataUrl || '', fName),
         storagePath: d.storage_path || d.storagePath || '',
+        dataUrl: d.dataUrl || d.data_url || '',
         status: d.status || 'Uploaded',
         rejectionReason: d.rejection_reason || null,
         uploadedAt: d.uploaded_at || d.uploadedAt || submittedAt
@@ -406,75 +452,25 @@ export function extractAllApplicationDocuments(app) {
     });
   }
 
-  // 3. Always include default certificate slots for academic submissions
-  if (!docsMap.has('btech') && (app.cgpa || app.ug_degree || app.university)) {
-    addDoc('btech', {
-      key: 'ugDegreeDoc',
-      docType: `${app.ug_degree || 'B.Tech / B.E.'} Certificate / Consolidated Transcripts`,
-      fileName: 'BTech_Degree_Certificate.pdf',
-      fileSize: '2.4 MB',
-      fileUrl: '',
-      status: 'Uploaded',
-      uploadedAt: submittedAt,
-      institution: app.university,
-      score: app.cgpa ? `${app.cgpa} (${app.grading_scale || 'Percentage'})` : ''
-    });
-  }
-
-  if (!docsMap.has('10th') && app.class10_score) {
-    addDoc('10th', {
-      key: 'class10Doc',
-      docType: 'Class 10 / Secondary School Certificate (SSC)',
-      fileName: 'Class10_SSC_Marksheet_Memo.pdf',
-      fileSize: '1.8 MB',
-      fileUrl: '',
-      status: 'Uploaded',
-      uploadedAt: submittedAt,
-      score: `${app.class10_score} (${app.class10_score_type || 'Percentage'})`
-    });
-  }
-
-  if (!docsMap.has('12th') && app.inter_score) {
-    addDoc('12th', {
-      key: 'class12Doc',
-      docType: 'Class 12 / Intermediate Examination Marks Memo',
-      fileName: 'Class12_Intermediate_MarksMemo.pdf',
-      fileSize: '1.5 MB',
-      fileUrl: '',
-      status: 'Uploaded',
-      uploadedAt: submittedAt,
-      score: `${app.inter_score} (${app.inter_score_type || 'Percentage'})`
-    });
-  }
-
-  if (!docsMap.has('gr') && (app.gre_score || app.gate_score)) {
-    const isGre = !!app.gre_score;
-    addDoc('gr', {
-      key: isGre ? 'greScorecardDoc' : 'gateScorecardDoc',
-      docType: isGre ? 'Official GRE Scorecard Report' : 'Official GATE Scorecard Report',
-      fileName: isGre ? 'Official_GRE_Scorecard.pdf' : 'Official_GATE_Scorecard.pdf',
-      fileSize: '1.1 MB',
-      fileUrl: '',
-      status: 'Uploaded',
-      uploadedAt: submittedAt,
-      score: isGre ? `GRE: ${app.gre_score}` : `GATE: ${app.gate_score}`
-    });
-  }
-
-  if (!docsMap.has('cv') && (app.cv_url || app.cv_filename)) {
-    addDoc('cv', {
-      key: 'cvDocument',
-      docType: 'Curriculum Vitae (CV) / Resume',
-      fileName: app.cv_filename || 'Candidate_CV.pdf',
-      fileSize: '1.0 MB',
-      fileUrl: app.cv_url || '',
-      status: 'Uploaded',
-      uploadedAt: submittedAt
-    });
+  // 3. Fallback slots only if NO documents were attached to the application at all
+  if (docsMap.size === 0) {
+    if (app.cgpa || app.ug_degree || app.university) {
+      addDoc('btech', {
+        key: 'ugDegreeDoc',
+        docType: `${app.ug_degree || 'B.Tech / B.E.'} Certificate / Consolidated Transcripts`,
+        fileName: '',
+        fileSize: '',
+        fileUrl: '',
+        status: 'Not Uploaded',
+        uploadedAt: submittedAt,
+        institution: app.university,
+        score: app.cgpa ? `${app.cgpa} (${app.grading_scale || 'Percentage'})` : ''
+      });
+    }
   }
 
   // Convert map to ordered array
-  const priorityOrder = ['btech', '10th', '12th', 'gr', 'cv', 'degreeCert'];
+  const priorityOrder = ['degreeCert', 'btech', '10th', '12th', '16year', 'gr', 'cv'];
   const allDocs = Array.from(docsMap.values());
 
   allDocs.sort((a, b) => {

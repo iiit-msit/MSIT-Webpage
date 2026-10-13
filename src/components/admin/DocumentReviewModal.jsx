@@ -1,7 +1,9 @@
+
 import React, { useState } from 'react';
 import { XIcon, CheckCircleIcon, DownloadIcon, ExternalLinkIcon } from '../Icons';
 import { StatusBadge } from './StatusBadge';
-import { openDocumentInNewTab, getDocumentFromIndexedDB, generateOfficialPdfDataUrl } from '../../utils/documentStore';
+import { openDocumentInNewTab, getDocumentFromIndexedDB, dataUrlToBlob } from '../../utils/documentStore';
+import { supabase, isSupabaseConfigured } from '../../lib/supabase';
 
 export default function DocumentReviewModal({
   isOpen,
@@ -82,11 +84,33 @@ export default function DocumentReviewModal({
                 type="button"
                 className="btn btn-secondary btn-sm"
                 onClick={async () => {
-                  const targetUrl = document.file_url || document.fileUrl || document.dataUrl;
-                  if (targetUrl && (targetUrl.startsWith('data:') || targetUrl.startsWith('http://') || targetUrl.startsWith('https://'))) {
+                  let targetUrl = document.file_url || document.fileUrl || document.dataUrl;
+                  const storagePath = document.storage_path || document.storagePath;
+
+                  if (storagePath && isSupabaseConfigured() && supabase) {
+                    try {
+                      const { data: fileBlob } = await supabase.storage
+                        .from('application-documents')
+                        .download(storagePath);
+                      if (fileBlob) {
+                        openDocumentInNewTab(URL.createObjectURL(fileBlob), document.file_name);
+                        return;
+                      }
+                      const { data: signedData } = await supabase.storage
+                        .from('application-documents')
+                        .createSignedUrl(storagePath, 3600);
+                      if (signedData?.signedUrl) {
+                        openDocumentInNewTab(signedData.signedUrl, document.file_name);
+                        return;
+                      }
+                    } catch (e) {}
+                  }
+
+                  if (targetUrl && (targetUrl.startsWith('data:') || targetUrl.startsWith('http://') || targetUrl.startsWith('https://') || targetUrl.startsWith('/'))) {
                     openDocumentInNewTab(targetUrl, document.file_name);
                     return;
                   }
+
                   // Check IndexedDB
                   try {
                     const fromDb = await getDocumentFromIndexedDB(`file_${document.id}`);
@@ -96,14 +120,7 @@ export default function DocumentReviewModal({
                     }
                   } catch (e) {}
 
-                  // Fallback to official PDF document
-                  const pdfUrl = generateOfficialPdfDataUrl({
-                    docType: document.doc_type || 'Candidate Document',
-                    fileName: document.file_name || 'Document.pdf',
-                    applicantName,
-                    applicationId
-                  });
-                  openDocumentInNewTab(pdfUrl, document.file_name);
+                  alert('Original document file is not available in database storage.');
                 }}
               >
                 <ExternalLinkIcon size={16} />

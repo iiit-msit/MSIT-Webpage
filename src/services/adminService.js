@@ -370,13 +370,17 @@ export function enrichApplicationRecord(app, localApps = []) {
     onboarding_date: getCleanVal(app.onboarding_date, fallback.onboarding_date, localMatch?.onboarding_date),
     onboarding_status: getCleanVal(app.onboarding_status, fallback.onboarding_status, localMatch?.onboarding_status),
     admission_offer: getCleanVal(app.admission_offer, fallback.admission_offer, localMatch?.admission_offer),
-    documents: (Array.isArray(fallback.documents) && fallback.documents.length > 0)
-      ? fallback.documents
-      : (Array.isArray(app.documents) && app.documents.length > 0 ? app.documents : [
-          { id: 'doc_1', doc_type: 'Marksheets / Transcripts', file_name: 'Consolidated_Transcripts.pdf', status: 'Pending', file_size: '2.4 MB' },
-          { id: 'doc_2', doc_type: 'Degree / Provisional Certificate', file_name: 'Degree_Certificate.pdf', status: 'Pending', file_size: '1.2 MB' },
-          { id: 'doc_3', doc_type: 'Photo ID Proof', file_name: 'Government_Photo_ID.pdf', status: 'Pending', file_size: '800 KB' }
-        ])
+    documents: (() => {
+      const appDocs = Array.isArray(app.documents) ? app.documents : (app.documents && typeof app.documents === 'object' ? app.documents : []);
+      const fallbackDocs = Array.isArray(fallback.documents) ? fallback.documents : [];
+      const hasRealDoc = (list) => Array.isArray(list) && list.some(d => d.file_url || d.fileUrl || d.storage_path || d.storagePath || d.dataUrl);
+
+      if (hasRealDoc(appDocs)) return appDocs;
+      if (hasRealDoc(fallbackDocs)) return fallbackDocs;
+      if (Array.isArray(appDocs) && appDocs.length > 0) return appDocs;
+      if (fallbackDocs.length > 0) return fallbackDocs;
+      return typeof app.documents === 'object' && app.documents ? app.documents : [];
+    })()
   };
 
   // Preserve latest admission decisions recorded in local storage or candidate keys
@@ -537,15 +541,65 @@ export async function fetchAllApplications() {
         .order('submitted_at', { ascending: false });
 
       if (!error && Array.isArray(data)) {
-        liveApps = data.map(app => ({
-          ...app,
-          isMock: false,
-          documents: app.documents || [
-            { id: `doc_${app.id}_1`, doc_type: 'Marksheets / Transcripts', file_name: 'Undergraduate_Transcripts.pdf', file_size: '2.1 MB', status: 'Pending', rejection_reason: null },
-            { id: `doc_${app.id}_2`, doc_type: 'Degree / Provisional Certificate', file_name: 'Degree_Certificate.pdf', file_size: '1.4 MB', status: 'Pending', rejection_reason: null },
-            { id: `doc_${app.id}_3`, doc_type: 'Photo ID Proof', file_name: 'Government_Photo_ID.pdf', file_size: '780 KB', status: 'Pending', rejection_reason: null }
-          ]
-        }));
+        // Also fetch all records from application_documents table to attach original uploaded files
+        let allDocRows = [];
+        try {
+          const { data: dData, error: dErr } = await supabase
+            .from('application_documents')
+            .select('*');
+          if (!dErr && Array.isArray(dData)) {
+            allDocRows = dData;
+          }
+        } catch (e) {
+          console.warn('[MSIT Admin] application_documents query warning:', e);
+        }
+
+        liveApps = data.map(app => {
+          // Documents from application_documents table for this app
+          const appDocsFromTable = allDocRows.filter(d => 
+            (d.application_id && (d.application_id === app.id || d.application_id === app.application_id)) ||
+            (d.application_ref && (d.application_ref === app.application_id || d.application_ref === app.id))
+          );
+
+          // Documents from JSON column or draft_data
+          let appDocs = app.documents;
+          if ((!appDocs || (Array.isArray(appDocs) && appDocs.length === 0)) && app.draft_data?.documents) {
+            appDocs = app.draft_data.documents;
+          }
+
+          let combinedDocs = [];
+          if (Array.isArray(appDocs) && appDocs.length > 0) {
+            combinedDocs = appDocs.map(cd => {
+              const match = appDocsFromTable.find(dbd => 
+                (dbd.id && String(dbd.id) === String(cd.id)) ||
+                (dbd.doc_type && cd.doc_type && dbd.doc_type.toLowerCase() === cd.doc_type.toLowerCase()) ||
+                (dbd.file_name && cd.file_name && dbd.file_name.toLowerCase() === cd.file_name.toLowerCase())
+              );
+              return match ? { ...cd, ...match } : cd;
+            });
+            // Add any docs from appDocsFromTable not already in combinedDocs
+            appDocsFromTable.forEach(ad => {
+              const exists = combinedDocs.some(cd => 
+                (cd.id && String(cd.id) === String(ad.id)) ||
+                (cd.doc_type && ad.doc_type && cd.doc_type.toLowerCase() === ad.doc_type.toLowerCase()) ||
+                (cd.file_name && ad.file_name && cd.file_name.toLowerCase() === ad.file_name.toLowerCase())
+              );
+              if (!exists) combinedDocs.push(ad);
+            });
+          } else if (appDocs && typeof appDocs === 'object' && !Array.isArray(appDocs)) {
+            combinedDocs = appDocs;
+          } else if (appDocsFromTable.length > 0) {
+            combinedDocs = appDocsFromTable;
+          } else {
+            combinedDocs = [];
+          }
+
+          return {
+            ...app,
+            isMock: false,
+            documents: combinedDocs
+          };
+        });
         isSupabaseLive = true;
       }
     } catch (err) {

@@ -17,9 +17,9 @@ import {
   getDocumentFromIndexedDB, 
   openDocumentInNewTab, 
   downloadDocument,
-  generateOfficialPdfDataUrl,
   dataUrlToBlob
 } from '../../utils/documentStore';
+import { supabase, isSupabaseConfigured } from '../../lib/supabase';
 
 /**
  * Direct Document & Certificate Viewer Modal.
@@ -94,7 +94,7 @@ export default function CertificateModal({
     return allDocs.find(d => d.id === selectedDocId) || allDocs[0];
   }, [allDocs, selectedDocId]);
 
-  // Asynchronously resolve file URL (checks dataUrl, IndexedDB, local files, or fallback official PDF)
+  // Asynchronously resolve file URL (checks dataUrl, Supabase Storage, IndexedDB, local files)
   const [resolvedUrl, setResolvedUrl] = useState('');
   const [isLoadingFile, setIsLoadingFile] = useState(false);
 
@@ -121,7 +121,7 @@ export default function CertificateModal({
       }
 
       // 2. Direct valid Data URL -> convert to Blob URL for clean browser PDF rendering
-      const rawUrl = activeDoc.fileUrl || activeDoc.file_url || activeDoc.dataUrl;
+      let rawUrl = activeDoc.fileUrl || activeDoc.file_url || activeDoc.dataUrl;
       if (rawUrl && rawUrl.startsWith('data:')) {
         const blob = dataUrlToBlob(rawUrl);
         if (blob) {
@@ -143,9 +143,108 @@ export default function CertificateModal({
         return;
       }
 
-      // 4. Valid external URL (excluding non-existent Supabase storage bucket URLs)
-      const isBrokenSupabase = typeof rawUrl === 'string' && rawUrl.includes('supabase.co/storage') && rawUrl.includes('application-documents');
-      if (rawUrl && !isBrokenSupabase && (rawUrl.startsWith('http://') || rawUrl.startsWith('https://'))) {
+      // 4. Identify Supabase Storage path from document or rawUrl
+      let storagePath = activeDoc.storagePath || activeDoc.storage_path || '';
+      if (!storagePath && typeof rawUrl === 'string' && rawUrl.includes('/application-documents/')) {
+        const afterBucket = rawUrl.split('/application-documents/')[1];
+        if (afterBucket) {
+          storagePath = decodeURIComponent(afterBucket.split('?')[0]);
+        }
+      }
+
+      // If storagePath / rawUrl is missing, lookup in Supabase application_documents table
+      if (!storagePath && !rawUrl && isSupabaseConfigured() && supabase && activeApp) {
+        try {
+          const appId = activeApp.application_id || activeApp.id;
+          const { data: dbDocs, error: dbErr } = await supabase
+            .from('application_documents')
+            .select('*')
+            .or(`application_id.eq.${activeApp.id},application_ref.eq.${appId}`);
+
+          if (!dbErr && Array.isArray(dbDocs) && dbDocs.length > 0) {
+            const match = dbDocs.find(d => 
+              (d.file_name && activeDoc.fileName && d.file_name.toLowerCase() === activeDoc.fileName.toLowerCase()) ||
+              (d.doc_type && activeDoc.docType && d.doc_type.toLowerCase().includes(activeDoc.docType.toLowerCase())) ||
+              (d.id && activeDoc.id && String(d.id) === String(activeDoc.id))
+            ) || dbDocs[0];
+
+            if (match) {
+              if (match.storage_path) storagePath = match.storage_path;
+              if (match.file_url) rawUrl = match.file_url;
+            }
+          }
+        } catch (e) {
+          console.warn('[MSIT] Supabase document lookup warning:', e);
+        }
+      }
+
+      // 5. Download original file directly from Supabase Storage using active authenticated session
+      if (storagePath && isSupabaseConfigured() && supabase) {
+        try {
+          // Attempt authenticated Blob download
+          const { data: fileBlob, error: dlErr } = await supabase.storage
+            .from('application-documents')
+            .download(storagePath);
+
+          if (!dlErr && fileBlob) {
+            localBlobUrl = URL.createObjectURL(fileBlob);
+            if (!isCancelled) {
+              setResolvedUrl(localBlobUrl);
+              setIsLoadingFile(false);
+            }
+            return;
+          }
+
+          // Fallback: Generate authenticated signed URL from Supabase Storage
+          const { data: signedData, error: signErr } = await supabase.storage
+            .from('application-documents')
+            .createSignedUrl(storagePath, 3600);
+
+          if (!signErr && signedData?.signedUrl) {
+            if (!isCancelled) {
+              setResolvedUrl(signedData.signedUrl);
+              setIsLoadingFile(false);
+            }
+            return;
+          }
+        } catch (stErr) {
+          console.warn('[MSIT] Supabase Storage download exception:', stErr);
+        }
+      }
+
+      // 6. Direct HTTP/HTTPS URL
+      if (rawUrl && (rawUrl.startsWith('http://') || rawUrl.startsWith('https://'))) {
+        // If it's a Supabase storage URL, also try downloading via storage API
+        if (rawUrl.includes('/application-documents/') && isSupabaseConfigured() && supabase) {
+          const parts = rawUrl.split('/application-documents/');
+          if (parts[1]) {
+            const extractedPath = decodeURIComponent(parts[1].split('?')[0]);
+            try {
+              const { data: fileBlob } = await supabase.storage
+                .from('application-documents')
+                .download(extractedPath);
+              if (fileBlob) {
+                localBlobUrl = URL.createObjectURL(fileBlob);
+                if (!isCancelled) {
+                  setResolvedUrl(localBlobUrl);
+                  setIsLoadingFile(false);
+                }
+                return;
+              }
+              const { data: signedData } = await supabase.storage
+                .from('application-documents')
+                .createSignedUrl(extractedPath, 3600);
+              if (signedData?.signedUrl) {
+                if (!isCancelled) {
+                  setResolvedUrl(signedData.signedUrl);
+                  setIsLoadingFile(false);
+                }
+                return;
+              }
+            } catch (e) {}
+          }
+        }
+
         if (!isCancelled) {
           setResolvedUrl(rawUrl);
           setIsLoadingFile(false);
@@ -153,7 +252,7 @@ export default function CertificateModal({
         return;
       }
 
-      // 5. Query IndexedDB for candidate file by id, docKey, or fileName
+      // 7. Query IndexedDB for candidate file by id, docKey, or fileName
       try {
         const appId = activeApp?.application_id || activeApp?.id || 'app';
         const docKey = activeDoc.key || activeDoc.id;
@@ -184,29 +283,10 @@ export default function CertificateModal({
         console.warn('[MSIT] IndexedDB document lookup warning:', e);
       }
 
-      // 6. Fallback: generate an official valid %PDF-1.4 Data URL for this record
-      const fallbackPdf = generateOfficialPdfDataUrl({
-        docType: activeDoc.docType || 'Official Academic Document',
-        fileName: activeDoc.fileName || `${activeDoc.id}.pdf`,
-        applicantName: activeApp?.full_name || 'Candidate',
-        applicationId: activeApp?.application_id || activeApp?.id || 'MSIT-APP',
-        institution: activeApp?.university || activeDoc.institution || '',
-        score: activeDoc.score || (activeDoc.id === 'btech' ? activeApp?.cgpa : null),
-        date: activeDoc.uploadedAt ? new Date(activeDoc.uploadedAt).toLocaleDateString() : ''
-      });
-
-      const blob = dataUrlToBlob(fallbackPdf);
-      if (blob) {
-        localBlobUrl = URL.createObjectURL(blob);
-        if (!isCancelled) {
-          setResolvedUrl(localBlobUrl);
-          setIsLoadingFile(false);
-        }
-      } else {
-        if (!isCancelled) {
-          setResolvedUrl(fallbackPdf);
-          setIsLoadingFile(false);
-        }
+      // 8. No file available in DB or storage - DO NOT generate fake text certificates!
+      if (!isCancelled) {
+        setResolvedUrl('');
+        setIsLoadingFile(false);
       }
     }
 
@@ -483,9 +563,14 @@ export default function CertificateModal({
                 />
               </object>
             ) : (
-              <div style={{ textAlign: 'center', color: '#94a3b8', padding: '3rem' }}>
-                <FileTextIcon size={40} />
-                <p style={{ marginTop: '0.75rem', fontSize: '0.9rem' }}>Document file not available for preview.</p>
+              <div style={{ textAlign: 'center', color: '#94a3b8', padding: '3.5rem 1.5rem' }}>
+                <FileTextIcon size={44} />
+                <h4 style={{ color: '#f1f5f9', marginTop: '1rem', fontSize: '1rem', fontWeight: 600 }}>
+                  Original Document Not Available
+                </h4>
+                <p style={{ marginTop: '0.4rem', fontSize: '0.85rem', color: '#94a3b8', maxWidth: '420px', margin: '0.4rem auto 0', lineHeight: 1.5 }}>
+                  The candidate document <strong>{fileName}</strong> was not found in the database records or storage.
+                </p>
               </div>
             )}
           </div>

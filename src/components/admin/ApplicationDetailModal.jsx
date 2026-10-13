@@ -855,6 +855,8 @@ export default function ApplicationDetailModal({
                         <span className="label">Class 10 / SSC:</span>
                         <div className="score-cert-row">
                           <span className="value font-medium">
+                            {currentApp.class10_school ? `${currentApp.class10_school} · ` : ''}
+                            {currentApp.class10_year ? `Year ${currentApp.class10_year} · ` : ''}
                             {currentApp.class10_score
                               ? `${currentApp.class10_score} (${currentApp.class10_score_type || 'Percentage'})`
                               : 'N/A'}
@@ -874,6 +876,8 @@ export default function ApplicationDetailModal({
                         <span className="label">Class 12 / Intermediate:</span>
                         <div className="score-cert-row">
                           <span className="value font-medium">
+                            {currentApp.inter_college ? `${currentApp.inter_college} · ` : ''}
+                            {currentApp.inter_year ? `Year ${currentApp.inter_year} · ` : ''}
                             {currentApp.inter_score
                               ? `${currentApp.inter_score} (${currentApp.inter_score_type || 'Percentage'}) [${currentApp.inter_pathway || 'Class 12'}]`
                               : 'N/A'}

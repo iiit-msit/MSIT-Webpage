@@ -351,38 +351,7 @@ export default function ApplicationPortalPage() {
 
   const currentStatementWords = getWordCount(formData.statementText);
 
-  // 68% eligibility threshold calculation
-  const getEligibilityAdvisory = () => {
-    if (!formData.cgpa) return null;
-    const scoreNum = parseFloat(formData.cgpa);
-    if (isNaN(scoreNum)) return null;
 
-    const scale = formData.gradingScale;
-    let isBelow = false;
-    let thresholdLabel = '68%';
-
-    if (scale.includes('Percentage')) {
-      thresholdLabel = '68%';
-      isBelow = scoreNum < 68;
-    } else if (scale.includes('10-Point')) {
-      thresholdLabel = '6.8 CGPA';
-      isBelow = scoreNum < 6.8;
-    } else if (scale.includes('4-Point')) {
-      thresholdLabel = '2.72 GPA';
-      isBelow = scoreNum < 2.72;
-    }
-
-    if (isBelow) {
-      return {
-        isBelow: true,
-        thresholdLabel,
-        message: `Advisory Note: The officially recommended undergraduate degree eligibility threshold for MSIT is ${thresholdLabel}. While your entered score (${formData.cgpa}) is below this benchmark, the admissions committee conducts a comprehensive evaluation of every candidate, considering technical projects, entrance exam scores, and your statement of purpose. You may proceed with your application.`
-      };
-    }
-    return null;
-  };
-
-  const eligibilityAdvisory = getEligibilityAdvisory();
 
   // Contact Label Helpers
   const getParentNameLabel = () => "Contact Name";
@@ -555,6 +524,16 @@ export default function ApplicationPortalPage() {
     // SECTION 3: Academic Qualifications
     if (stepNum === 3) {
       // 3A. Class 10
+      if (!formData.class10School || !formData.class10School.trim()) {
+        errs.class10School = 'School name is required';
+      }
+
+      if (!formData.class10Year || !String(formData.class10Year).trim()) {
+        errs.class10Year = 'Year of passing is required';
+      } else if (!/^\d{4}$/.test(String(formData.class10Year).trim())) {
+        errs.class10Year = 'Please enter a valid 4-digit year (e.g. 2020)';
+      }
+
       if (!formData.class10Score || !formData.class10Score.trim()) {
         errs.class10Score = 'Class 10 / SSC score is required';
       } else {
@@ -573,6 +552,16 @@ export default function ApplicationPortalPage() {
       }
 
       // 3B. Class 12 / Intermediate
+      if (!formData.interCollege || !formData.interCollege.trim()) {
+        errs.interCollege = 'Intermediate college name is required';
+      }
+
+      if (!formData.interYear || !String(formData.interYear).trim()) {
+        errs.interYear = 'Year of passing is required';
+      } else if (!/^\d{4}$/.test(String(formData.interYear).trim())) {
+        errs.interYear = 'Please enter a valid 4-digit year (e.g. 2022)';
+      }
+
       if (!formData.interScore || !formData.interScore.trim()) {
         errs.interScore = 'Intermediate / Class 12 score is required';
       } else {
@@ -758,7 +747,7 @@ export default function ApplicationPortalPage() {
         ...formData,
         applicationId: generatedRef,
         statementWordCount: currentStatementWords,
-        scoreEligibilityNote: eligibilityAdvisory ? eligibilityAdvisory.message : ''
+        scoreEligibilityNote: ''
       };
 
       let result;
@@ -1774,30 +1763,34 @@ export default function ApplicationPortalPage() {
                 <div className="form-field-group" style={{ gridColumn: '1 / -1' }}>
                   <div className="field-label-row">
                     <label className="field-label" htmlFor="field-class10School">School Name</label>
+                    <span className="field-badge-required">Required</span>
                   </div>
                   <input
                     id="field-class10School"
                     type="text"
-                    className="app-form-input"
+                    className={`app-form-input ${errors.class10School ? 'has-error' : ''}`}
                     value={formData.class10School || ''}
                     onChange={(e) => handleFieldChange('class10School', e.target.value)}
                     placeholder="e.g. Hyderabad Public School, Kendriya Vidyalaya, St. Joseph's High School"
                   />
+                  {errors.class10School && <span className="field-error-text">{errors.class10School}</span>}
                 </div>
 
                 <div className="form-field-group">
                   <div className="field-label-row">
                     <label className="field-label" htmlFor="field-class10Year">Year of Passing</label>
+                    <span className="field-badge-required">Required</span>
                   </div>
                   <input
                     id="field-class10Year"
                     type="text"
-                    className="app-form-input"
+                    className={`app-form-input ${errors.class10Year ? 'has-error' : ''}`}
                     value={formData.class10Year || ''}
                     onChange={(e) => handleFieldChange('class10Year', e.target.value)}
                     placeholder="e.g. 2020"
                     maxLength={4}
                   />
+                  {errors.class10Year && <span className="field-error-text">{errors.class10Year}</span>}
                 </div>
 
                 <div className="form-field-group">
@@ -1852,15 +1845,17 @@ export default function ApplicationPortalPage() {
                 <div className="form-field-group" style={{ gridColumn: '1 / -1' }}>
                   <div className="field-label-row">
                     <label className="field-label" htmlFor="field-interCollege">Intermediate College Name</label>
+                    <span className="field-badge-required">Required</span>
                   </div>
                   <input
                     id="field-interCollege"
                     type="text"
-                    className="app-form-input"
+                    className={`app-form-input ${errors.interCollege ? 'has-error' : ''}`}
                     value={formData.interCollege || ''}
                     onChange={(e) => handleFieldChange('interCollege', e.target.value)}
                     placeholder="e.g. Narayana Junior College, Sri Chaitanya Junior College, Government Polytechnic"
                   />
+                  {errors.interCollege && <span className="field-error-text">{errors.interCollege}</span>}
                 </div>
 
                 <div className="form-field-group">
@@ -1883,16 +1878,18 @@ export default function ApplicationPortalPage() {
                 <div className="form-field-group">
                   <div className="field-label-row">
                     <label className="field-label" htmlFor="field-interYear">Year of Passing</label>
+                    <span className="field-badge-required">Required</span>
                   </div>
                   <input
                     id="field-interYear"
                     type="text"
-                    className="app-form-input"
+                    className={`app-form-input ${errors.interYear ? 'has-error' : ''}`}
                     value={formData.interYear || ''}
                     onChange={(e) => handleFieldChange('interYear', e.target.value)}
                     placeholder="e.g. 2022"
                     maxLength={4}
                   />
+                  {errors.interYear && <span className="field-error-text">{errors.interYear}</span>}
                 </div>
 
                 <div className="form-field-group">
@@ -2066,17 +2063,6 @@ export default function ApplicationPortalPage() {
                   </select>
                 </div>
               </div>
-
-              {/* Eligibility Advisory Alert */}
-              {eligibilityAdvisory && (
-                <div className="eligibility-advisory-box">
-                  <HelpCircleIcon size={20} />
-                  <div>
-                    <strong>Undergraduate Eligibility Benchmark Advisory ({eligibilityAdvisory.thresholdLabel})</strong>
-                    <p>{eligibilityAdvisory.message}</p>
-                  </div>
-                </div>
-              )}
 
               {/* Degree Marksheet / Consolidated Marks Memo Upload */}
               {renderDocumentUploadCard(

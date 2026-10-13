@@ -10,9 +10,7 @@ export const APPLICATION_CONFIG = {
   portalTitle: 'MSIT Application Portal',
   supportEmail: 'admissions@msit.ac.in',
   supportPhone: '+91 40 6653 1000',
-  statementMaxWords: 300,
-  recommendedEligibilityThresholdPercentage: 68,
-  recommendedEligibilityThresholdCgpa: 6.8
+  statementMaxWords: 300
 };
 
 export const INITIAL_APPLICATION_STATE = {
@@ -134,9 +132,9 @@ export const DEPARTMENT_OPTIONS = [
 ];
 
 export const GRADING_SCALE_OPTIONS = [
-  { value: 'Percentage (out of 100%)', label: 'Percentage (out of 100%)', max: 100, threshold: 68 },
-  { value: '10-Point CGPA', label: '10-Point CGPA (out of 10.0)', max: 10.0, threshold: 6.8 },
-  { value: '4-Point GPA', label: '4-Point GPA (out of 4.0)', max: 4.0, threshold: 2.72 }
+  { value: 'Percentage (out of 100%)', label: 'Percentage (out of 100%)', max: 100 },
+  { value: '10-Point CGPA', label: '10-Point CGPA (out of 10.0)', max: 10.0 },
+  { value: '4-Point GPA', label: '4-Point GPA (out of 4.0)', max: 4.0 }
 ];
 
 export const PASSING_YEAR_OPTIONS = [

@@ -198,25 +198,25 @@ export default function PrintableApplicationDocument({ formData = {}, serverApp 
                 <td>{formData.class10School || serverApp?.class10_school || 'Recognized Board'}</td>
                 <td>General Secondary Studies</td>
                 <td className="text-center">{formData.class10Year || serverApp?.class10_year || '—'}</td>
-                <td style={{ textAlign: 'right' }}><strong>{formData.class10Score ? `${formData.class10Score} (${formData.class10ScoreType || '%'})` : 'Recorded'}</strong></td>
+                <td style={{ textAlign: 'right' }}>{formData.class10Score ? `${formData.class10Score} (${formData.class10ScoreType || '%'})` : 'Recorded'}</td>
               </tr>
               <tr>
                 <td className="field-name"><strong>Class 12 / Higher Secondary</strong></td>
                 <td>{formData.interCollege || serverApp?.inter_college || 'Intermediate Board / Technical'}</td>
                 <td>{formData.interPathway || 'Class 12 / Intermediate'}</td>
                 <td className="text-center">{formData.interYear || serverApp?.inter_year || '—'}</td>
-                <td style={{ textAlign: 'right' }}><strong>{formData.interScore ? `${formData.interScore} (${formData.interScoreType || '%'})` : 'Recorded'}</strong></td>
+                <td style={{ textAlign: 'right' }}>{formData.interScore ? `${formData.interScore} (${formData.interScoreType || '%'})` : 'Recorded'}</td>
               </tr>
               <tr>
                 <td className="field-name"><strong>Qualifying Degree</strong></td>
                 <td>{formData.university || 'Affiliated University'}</td>
                 <td>
-                  <strong>{formData.ugDegree || 'B.Tech / B.E.'}</strong>
+                  {formData.ugDegree || 'B.Tech / B.E.'}
                   {formData.branch ? ` - ${formData.branch}` : ''}
                   {formData.specialization ? ` (${formData.specialization})` : ''}
                 </td>
-                <td className="text-center"><strong>{formData.passingYear || '-'}</strong></td>
-                <td style={{ textAlign: 'right' }}><strong>{formData.cgpa ? `${formData.cgpa} (${formData.gradingScale ? formData.gradingScale.split(' ')[0] : '%'})` : 'Recorded'}</strong></td>
+                <td className="text-center">{formData.passingYear || '—'}</td>
+                <td style={{ textAlign: 'right' }}>{formData.cgpa ? `${formData.cgpa} (${formData.gradingScale ? formData.gradingScale.split(' ')[0] : '%'})` : 'Recorded'}</td>
               </tr>
             </tbody>
           </table>

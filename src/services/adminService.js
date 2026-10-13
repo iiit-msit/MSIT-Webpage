@@ -524,6 +524,41 @@ export async function updateApplicationDetails(applicationId, detailsPatch, admi
 }
 
 /**
+ * Guess the human-readable document type from a storage file name.
+ * Storage files follow the pattern: {sanitized_doc_type}_{timestamp}.{ext}
+ */
+function guessDocTypeFromFileName(fileName) {
+  const lower = (fileName || '').toLowerCase();
+  if (lower.includes('class_10') || lower.includes('ssc') || lower.includes('10th'))
+    return 'Class 10 / Secondary School Certificate (SSC)';
+  if (lower.includes('intermediate') || lower.includes('class_12') || lower.includes('12th'))
+    return 'Class 12 / Intermediate Examination Marks Memo';
+  if (lower.includes('degree_certificate') || lower.includes('provisional'))
+    return 'Degree / Provisional Certificate';
+  if (lower.includes('degree_marksheet') || lower.includes('consolidated') || lower.includes('transcript'))
+    return 'Marksheets / Transcripts';
+  if (lower.includes('curriculum_vitae') || lower.includes('cv') || lower.includes('resume'))
+    return 'CV / Resume';
+  if (lower.includes('gre'))
+    return 'Official GRE Scorecard Report';
+  if (lower.includes('gate'))
+    return 'Official GATE Scorecard Report';
+  if (lower.includes('16_year') || lower.includes('16year'))
+    return 'Additional 16-Year Degree Certificate';
+  return fileName.replace(/_\d{10,}\..*$/, '').replace(/_/g, ' ');
+}
+
+/**
+ * Format byte count to human-readable file size string.
+ */
+function formatStorageFileSize(bytes) {
+  if (!bytes || bytes <= 0) return '1.0 MB';
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+/**
  * Fetch all applications (merging Supabase live data with local/mock data).
  *
  * @returns {Promise<{ applications: Array, isSupabaseLive: boolean }>}
@@ -554,11 +589,69 @@ export async function fetchAllApplications() {
           console.warn('[MSIT Admin] application_documents query warning:', e);
         }
 
+        // If application_documents table returned no rows, discover files from Supabase Storage bucket
+        if (allDocRows.length === 0) {
+          try {
+            // Collect unique user_ids from applications to look up in storage
+            const userIds = [...new Set(data.map(a => a.user_id).filter(Boolean))];
+            for (const userId of userIds) {
+              // List subfolders/files under this user's storage folder
+              const { data: subItems, error: lErr } = await supabase.storage
+                .from('application-documents')
+                .list(userId, { limit: 200 });
+              if (lErr || !subItems) continue;
+
+              for (const item of subItems) {
+                // Detect if item is a folder (no metadata) or a file (has metadata)
+                if (item.metadata && item.name) {
+                  // Direct file under userId/
+                  allDocRows.push({
+                    user_id: userId,
+                    storage_path: `${userId}/${item.name}`,
+                    file_name: item.name,
+                    doc_type: guessDocTypeFromFileName(item.name),
+                    file_size: formatStorageFileSize(item.metadata.size),
+                    status: 'Uploaded',
+                    uploaded_at: item.created_at || item.updated_at
+                  });
+                } else {
+                  // It's a subfolder – list its contents
+                  const subPath = `${userId}/${item.name}`;
+                  const { data: files } = await supabase.storage
+                    .from('application-documents')
+                    .list(subPath, { limit: 200 });
+                  if (files) {
+                    files.forEach(f => {
+                      if (f.name) {
+                        allDocRows.push({
+                          user_id: userId,
+                          storage_path: `${subPath}/${f.name}`,
+                          file_name: f.name,
+                          doc_type: guessDocTypeFromFileName(f.name),
+                          file_size: f.metadata ? formatStorageFileSize(f.metadata.size) : '1.0 MB',
+                          status: 'Uploaded',
+                          uploaded_at: f.created_at || f.updated_at
+                        });
+                      }
+                    });
+                  }
+                }
+              }
+            }
+            if (allDocRows.length > 0) {
+              console.log(`[MSIT Admin] Discovered ${allDocRows.length} files from Supabase Storage bucket`);
+            }
+          } catch (e) {
+            console.warn('[MSIT Admin] Storage bucket listing warning:', e);
+          }
+        }
+
         liveApps = data.map(app => {
-          // Documents from application_documents table for this app
+          // Documents from application_documents table OR storage discovery for this app
           const appDocsFromTable = allDocRows.filter(d => 
             (d.application_id && (d.application_id === app.id || d.application_id === app.application_id)) ||
-            (d.application_ref && (d.application_ref === app.application_id || d.application_ref === app.id))
+            (d.application_ref && (d.application_ref === app.application_id || d.application_ref === app.id)) ||
+            (d.user_id && app.user_id && d.user_id === app.user_id)
           );
 
           // Documents from JSON column or draft_data
@@ -587,7 +680,12 @@ export async function fetchAllApplications() {
               if (!exists) combinedDocs.push(ad);
             });
           } else if (appDocs && typeof appDocs === 'object' && !Array.isArray(appDocs)) {
-            combinedDocs = appDocs;
+            // Object-format documents — merge storage discoveries in
+            if (appDocsFromTable.length > 0) {
+              combinedDocs = appDocsFromTable;
+            } else {
+              combinedDocs = appDocs;
+            }
           } else if (appDocsFromTable.length > 0) {
             combinedDocs = appDocsFromTable;
           } else {

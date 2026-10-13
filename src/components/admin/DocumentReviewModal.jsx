@@ -11,6 +11,7 @@ export default function DocumentReviewModal({
   document,
   applicantName,
   applicationId,
+  application,
   onUpdateStatus
 }) {
   const [actionType, setActionType] = useState(null); // 'Verified' | 'Rejected' | null
@@ -25,6 +26,7 @@ export default function DocumentReviewModal({
       setError('A rejection comment / reason is required when rejecting a candidate document.');
       return;
     }
+
 
     setIsSubmitting(true);
     try {
@@ -119,6 +121,62 @@ export default function DocumentReviewModal({
                       return;
                     }
                   } catch (e) {}
+
+                  // Discover files from Supabase Storage by listing applicant's user_id folder
+                  const userId = application?.user_id;
+                  if (userId && isSupabaseConfigured() && supabase) {
+                    try {
+                      const { data: subItems } = await supabase.storage
+                        .from('application-documents')
+                        .list(userId, { limit: 200 });
+                      if (subItems && subItems.length > 0) {
+                        let allFiles = [];
+                        for (const item of subItems) {
+                          if (item.metadata && item.name) {
+                            allFiles.push({ path: `${userId}/${item.name}`, name: item.name });
+                          } else if (item.name) {
+                            const { data: files } = await supabase.storage
+                              .from('application-documents')
+                              .list(`${userId}/${item.name}`, { limit: 200 });
+                            if (files) {
+                              files.forEach(f => {
+                                if (f.name) allFiles.push({ path: `${userId}/${item.name}/${f.name}`, name: f.name });
+                              });
+                            }
+                          }
+                        }
+                        const docTypeStr = (document.doc_type || document.docType || '').toLowerCase();
+                        const matched = allFiles.find(f => {
+                          const fn = f.name.toLowerCase();
+                          if ((docTypeStr.includes('transcript') || docTypeStr.includes('marksheet') || docTypeStr.includes('b.tech')) && (fn.includes('degree_marksheet') || fn.includes('consolidated') || fn.includes('transcript'))) return true;
+                          if ((docTypeStr.includes('class 10') || docTypeStr.includes('ssc') || docTypeStr.includes('secondary')) && (fn.includes('class_10') || fn.includes('ssc'))) return true;
+                          if ((docTypeStr.includes('class 12') || docTypeStr.includes('inter')) && (fn.includes('intermediate') || fn.includes('class_12'))) return true;
+                          if ((docTypeStr.includes('degree') && (docTypeStr.includes('cert') || docTypeStr.includes('provisional'))) && (fn.includes('degree_certificate') || fn.includes('provisional'))) return true;
+                          if ((docTypeStr.includes('cv') || docTypeStr.includes('resume')) && (fn.includes('curriculum_vitae') || fn.includes('cv') || fn.includes('resume'))) return true;
+                          if ((docTypeStr.includes('gre') || docTypeStr.includes('gate')) && (fn.includes('gre') || fn.includes('gate'))) return true;
+                          return false;
+                        });
+                        if (matched) {
+                          const { data: fileBlob } = await supabase.storage
+                            .from('application-documents')
+                            .download(matched.path);
+                          if (fileBlob) {
+                            openDocumentInNewTab(URL.createObjectURL(fileBlob), document.file_name);
+                            return;
+                          }
+                          const { data: signedData } = await supabase.storage
+                            .from('application-documents')
+                            .createSignedUrl(matched.path, 3600);
+                          if (signedData?.signedUrl) {
+                            openDocumentInNewTab(signedData.signedUrl, document.file_name);
+                            return;
+                          }
+                        }
+                      }
+                    } catch (e) {
+                      console.warn('[MSIT] Storage file discovery warning:', e);
+                    }
+                  }
 
                   alert('Original document file is not available in database storage.');
                 }}

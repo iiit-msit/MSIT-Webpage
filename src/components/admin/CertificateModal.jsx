@@ -283,7 +283,98 @@ export default function CertificateModal({
         console.warn('[MSIT] IndexedDB document lookup warning:', e);
       }
 
-      // 8. No file available in DB or storage - DO NOT generate fake text certificates!
+      // 8. Discover files from Supabase Storage bucket by listing applicant's user_id folder
+      if (isSupabaseConfigured() && supabase && activeApp?.user_id) {
+        try {
+          const userId = activeApp.user_id;
+          // List subfolders/files under this user's storage folder
+          const { data: subItems } = await supabase.storage
+            .from('application-documents')
+            .list(userId, { limit: 200 });
+
+          if (subItems && subItems.length > 0) {
+            let allStorageFiles = [];
+            for (const item of subItems) {
+              if (item.metadata && item.name) {
+                // Direct file under userId/
+                allStorageFiles.push({ path: `${userId}/${item.name}`, name: item.name });
+              } else if (item.name) {
+                // Subfolder – list its contents
+                const { data: files } = await supabase.storage
+                  .from('application-documents')
+                  .list(`${userId}/${item.name}`, { limit: 200 });
+                if (files) {
+                  files.forEach(f => {
+                    if (f.name) {
+                      allStorageFiles.push({ path: `${userId}/${item.name}/${f.name}`, name: f.name });
+                    }
+                  });
+                }
+              }
+            }
+
+            // Match storage file to the requested document type
+            const docId = (activeDoc.id || '').toLowerCase();
+            const docTypeStr = (activeDoc.docType || activeDoc.doc_type || '').toLowerCase();
+            const matchedFile = allStorageFiles.find(f => {
+              const fn = f.name.toLowerCase();
+              // Match by doc ID / type keywords
+              if ((docId === 'btech' || docTypeStr.includes('transcript') || docTypeStr.includes('marksheet') || docTypeStr.includes('b.tech') || docTypeStr.includes('b.e.')) &&
+                  (fn.includes('degree_marksheet') || fn.includes('consolidated') || fn.includes('transcript') || fn.includes('btech') || fn.includes('b_tech')))
+                return true;
+              if ((docId === '10th' || docTypeStr.includes('class 10') || docTypeStr.includes('ssc') || docTypeStr.includes('secondary')) &&
+                  (fn.includes('class_10') || fn.includes('ssc') || fn.includes('10th')))
+                return true;
+              if ((docId === '12th' || docTypeStr.includes('class 12') || docTypeStr.includes('inter') || docTypeStr.includes('diploma')) &&
+                  (fn.includes('intermediate') || fn.includes('class_12') || fn.includes('12th')))
+                return true;
+              if ((docId === 'degreecert' || docTypeStr.includes('degree') && (docTypeStr.includes('cert') || docTypeStr.includes('provisional'))) &&
+                  (fn.includes('degree_certificate') || fn.includes('provisional')))
+                return true;
+              if ((docId === 'cv' || docTypeStr.includes('cv') || docTypeStr.includes('resume') || docTypeStr.includes('curriculum')) &&
+                  (fn.includes('curriculum_vitae') || fn.includes('cv') || fn.includes('resume')))
+                return true;
+              if ((docId === 'gr' || docTypeStr.includes('gre') || docTypeStr.includes('gate') || docTypeStr.includes('scorecard')) &&
+                  (fn.includes('gre') || fn.includes('gate') || fn.includes('scorecard')))
+                return true;
+              if ((docId === '16year' || docTypeStr.includes('16')) &&
+                  (fn.includes('16_year') || fn.includes('16year')))
+                return true;
+              return false;
+            });
+
+            if (matchedFile) {
+              console.log(`[MSIT] Storage discovery: matched "${matchedFile.name}" for doc type "${activeDoc.docType}"`);
+              const { data: fileBlob, error: dlErr } = await supabase.storage
+                .from('application-documents')
+                .download(matchedFile.path);
+              if (!dlErr && fileBlob) {
+                localBlobUrl = URL.createObjectURL(fileBlob);
+                if (!isCancelled) {
+                  setResolvedUrl(localBlobUrl);
+                  setIsLoadingFile(false);
+                }
+                return;
+              }
+              // Try signed URL as fallback
+              const { data: signedData } = await supabase.storage
+                .from('application-documents')
+                .createSignedUrl(matchedFile.path, 3600);
+              if (signedData?.signedUrl) {
+                if (!isCancelled) {
+                  setResolvedUrl(signedData.signedUrl);
+                  setIsLoadingFile(false);
+                }
+                return;
+              }
+            }
+          }
+        } catch (e) {
+          console.warn('[MSIT] Storage file discovery warning:', e);
+        }
+      }
+
+      // 9. No file available in DB or storage - DO NOT generate fake text certificates!
       if (!isCancelled) {
         setResolvedUrl('');
         setIsLoadingFile(false);

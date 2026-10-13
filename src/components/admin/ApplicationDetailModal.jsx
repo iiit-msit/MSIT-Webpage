@@ -1470,6 +1470,7 @@ export default function ApplicationDetailModal({
         document={selectedDoc}
         applicantName={currentApp.full_name}
         applicationId={currentApp.application_id}
+        application={currentApp}
         onUpdateStatus={handleUpdateDocStatus}
       />
 

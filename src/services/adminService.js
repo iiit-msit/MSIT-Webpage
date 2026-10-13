@@ -601,93 +601,131 @@ export async function fetchAllApplications() {
           console.warn('[MSIT Admin] application_documents query warning:', e);
         }
 
-        // If application_documents table returned no rows, discover files from Supabase Storage bucket
-        if (allDocRows.length === 0) {
-          try {
-            // Collect user_ids from live applications plus discover root folders
-            const discoveredUserIds = new Set(data.map(a => a.user_id).filter(Boolean));
+        // Helper to extract timestamp from filename or metadata
+        const getDocTimestamp = (item) => {
+          if (!item) return 0;
+          const fileName = item.file_name || item.fileName || item.name || '';
+          const match = fileName.match(/_(\d{10,})\.[^.]+$/);
+          if (match) return parseInt(match[1], 10);
+          const dateStr = item.uploaded_at || item.uploadedAt || item.created_at || item.updated_at;
+          if (dateStr) {
+            const t = new Date(dateStr).getTime();
+            if (!isNaN(t)) return t;
+          }
+          return 0;
+        };
 
-            // Also attempt listing root of bucket to find all user folders
-            try {
-              const { data: rootItems } = await supabase.storage
+        // Discover and merge files from Supabase Storage bucket
+        try {
+          // Collect user_ids from live applications plus discover root folders
+          const discoveredUserIds = new Set(data.map(a => a.user_id).filter(Boolean));
+
+          // Attempt listing root of bucket to find all user folders
+          try {
+            const { data: rootItems } = await supabase.storage
+              .from('application-documents')
+              .list('', { limit: 100 });
+            if (Array.isArray(rootItems)) {
+              rootItems.forEach(r => {
+                if (r.name && !r.name.includes('.')) {
+                  discoveredUserIds.add(r.name);
+                }
+              });
+            }
+          } catch (re) {}
+
+          const storageDocsByUserId = new Map(); // userId -> Map(slotId -> docRecord)
+
+          for (const userId of Array.from(discoveredUserIds)) {
+            if (!storageDocsByUserId.has(userId)) {
+              storageDocsByUserId.set(userId, new Map());
+            }
+            const userSlotMap = storageDocsByUserId.get(userId);
+
+            const checkAndAddFile = (fName, fPath, fMeta, fCreated) => {
+              if (!fName || fName.includes('.emptyFolderPlaceholder') || !fName.includes('.')) return;
+              const info = guessDocInfoFromFileName(fName);
+              const { data: pubData } = supabase.storage
                 .from('application-documents')
-                .list('', { limit: 100 });
-              if (Array.isArray(rootItems)) {
-                rootItems.forEach(r => {
-                  if (r.name && !r.name.includes('.')) {
-                    discoveredUserIds.add(r.name);
-                  }
+                .getPublicUrl(fPath);
+
+              const docCandidate = {
+                id: info.id,
+                user_id: userId,
+                storage_path: fPath,
+                file_name: fName,
+                doc_type: info.docType,
+                file_size: formatStorageFileSize(fMeta?.size),
+                file_url: pubData?.publicUrl || '',
+                status: 'Uploaded',
+                uploaded_at: fCreated || new Date().toISOString()
+              };
+
+              const existing = userSlotMap.get(info.id);
+              if (!existing) {
+                userSlotMap.set(info.id, docCandidate);
+              } else {
+                const existingTime = getDocTimestamp(existing);
+                const newTime = getDocTimestamp(docCandidate);
+                if (newTime >= existingTime) {
+                  userSlotMap.set(info.id, docCandidate);
+                }
+              }
+            };
+
+            // 1. List user folder
+            const { data: subItems, error: lErr } = await supabase.storage
+              .from('application-documents')
+              .list(userId, { limit: 200 });
+            if (lErr || !subItems) continue;
+
+            const foldersToList = new Set();
+            for (const item of subItems) {
+              const isFolder = !item.name.includes('.') || !item.id || item.id === null;
+              if (!isFolder) {
+                checkAndAddFile(item.name, `${userId}/${item.name}`, item.metadata, item.created_at || item.updated_at);
+              } else if (item.name && item.name !== '.emptyFolderPlaceholder') {
+                foldersToList.add(`${userId}/${item.name}`);
+              }
+            }
+
+            // Always ensure standard 'new' subfolder is checked
+            foldersToList.add(`${userId}/new`);
+
+            for (const subPath of Array.from(foldersToList)) {
+              const { data: files } = await supabase.storage
+                .from('application-documents')
+                .list(subPath, { limit: 200 });
+              if (files && files.length > 0) {
+                files.forEach(f => {
+                  checkAndAddFile(f.name, `${subPath}/${f.name}`, f.metadata, f.created_at || f.updated_at);
                 });
               }
-            } catch (re) {}
-
-            for (const userId of Array.from(discoveredUserIds)) {
-              // 1. List user folder
-              const { data: subItems, error: lErr } = await supabase.storage
-                .from('application-documents')
-                .list(userId, { limit: 200 });
-              if (lErr || !subItems) continue;
-
-              const foldersToList = new Set();
-              for (const item of subItems) {
-                const isFolder = !item.name.includes('.') || !item.id || item.id === null;
-                if (!isFolder) {
-                  const info = guessDocInfoFromFileName(item.name);
-                  const { data: pubData } = supabase.storage
-                    .from('application-documents')
-                    .getPublicUrl(`${userId}/${item.name}`);
-                  allDocRows.push({
-                    id: info.id,
-                    user_id: userId,
-                    storage_path: `${userId}/${item.name}`,
-                    file_name: item.name,
-                    doc_type: info.docType,
-                    file_size: formatStorageFileSize(item.metadata?.size),
-                    file_url: pubData?.publicUrl || '',
-                    status: 'Uploaded',
-                    uploaded_at: item.created_at || item.updated_at
-                  });
-                } else if (item.name && item.name !== '.emptyFolderPlaceholder') {
-                  foldersToList.add(`${userId}/${item.name}`);
-                }
-              }
-
-              // Always ensure standard 'new' subfolder is checked
-              foldersToList.add(`${userId}/new`);
-
-              for (const subPath of Array.from(foldersToList)) {
-                const { data: files } = await supabase.storage
-                  .from('application-documents')
-                  .list(subPath, { limit: 200 });
-                if (files && files.length > 0) {
-                  files.forEach(f => {
-                    if (f.name && f.name.includes('.') && f.name !== '.emptyFolderPlaceholder') {
-                      const info = guessDocInfoFromFileName(f.name);
-                      const { data: pubData } = supabase.storage
-                        .from('application-documents')
-                        .getPublicUrl(`${subPath}/${f.name}`);
-                      allDocRows.push({
-                        id: info.id,
-                        user_id: userId,
-                        storage_path: `${subPath}/${f.name}`,
-                        file_name: f.name,
-                        doc_type: info.docType,
-                        file_size: formatStorageFileSize(f.metadata?.size),
-                        file_url: pubData?.publicUrl || '',
-                        status: 'Uploaded',
-                        uploaded_at: f.created_at || f.updated_at
-                      });
-                    }
-                  });
-                }
-              }
             }
-            if (allDocRows.length > 0) {
-              console.log(`[MSIT Admin] Discovered ${allDocRows.length} files from Supabase Storage bucket`);
-            }
-          } catch (e) {
-            console.warn('[MSIT Admin] Storage bucket listing warning:', e);
           }
+
+          // Flatten deduplicated storage documents into allDocRows
+          storageDocsByUserId.forEach(userSlotMap => {
+            userSlotMap.forEach(latestDoc => {
+              // Replace or merge with any existing record for this user and slot
+              const existingIdx = allDocRows.findIndex(d => d.user_id === latestDoc.user_id && d.id === latestDoc.id);
+              if (existingIdx >= 0) {
+                const existingTime = getDocTimestamp(allDocRows[existingIdx]);
+                const newTime = getDocTimestamp(latestDoc);
+                if (newTime >= existingTime) {
+                  allDocRows[existingIdx] = latestDoc;
+                }
+              } else {
+                allDocRows.push(latestDoc);
+              }
+            });
+          });
+
+          if (allDocRows.length > 0) {
+            console.log(`[MSIT Admin] Deduplicated ${allDocRows.length} active files from DB and Supabase Storage`);
+          }
+        } catch (e) {
+          console.warn('[MSIT Admin] Storage bucket listing warning:', e);
         }
 
         liveApps = data.map(app => {
@@ -711,37 +749,39 @@ export async function fetchAllApplications() {
             appDocs = app.draft_data.documents;
           }
 
-          let combinedDocs = [];
-          if (Array.isArray(appDocs) && appDocs.length > 0) {
-            combinedDocs = appDocs.map(cd => {
-              const match = appDocsFromTable.find(dbd => 
-                (dbd.id && String(dbd.id) === String(cd.id)) ||
-                (dbd.doc_type && cd.doc_type && dbd.doc_type.toLowerCase() === cd.doc_type.toLowerCase()) ||
-                (dbd.file_name && cd.file_name && dbd.file_name.toLowerCase() === cd.file_name.toLowerCase())
-              );
-              return match ? { ...cd, ...match } : cd;
-            });
-            // Add any docs from appDocsFromTable not already in combinedDocs
-            appDocsFromTable.forEach(ad => {
-              const exists = combinedDocs.some(cd => 
-                (cd.id && String(cd.id) === String(ad.id)) ||
-                (cd.doc_type && ad.doc_type && cd.doc_type.toLowerCase() === ad.doc_type.toLowerCase()) ||
-                (cd.file_name && ad.file_name && cd.file_name.toLowerCase() === ad.file_name.toLowerCase())
-              );
-              if (!exists) combinedDocs.push(ad);
-            });
-          } else if (appDocs && typeof appDocs === 'object' && !Array.isArray(appDocs)) {
-            // Object-format documents — merge storage discoveries in
-            if (appDocsFromTable.length > 0) {
-              combinedDocs = appDocsFromTable;
+          // Deduplicate all candidate documents by canonical slot ID, keeping only the newest updated file
+          const slotMap = new Map();
+
+          const addCandidateDoc = (cd) => {
+            if (!cd) return;
+            const fName = cd.file_name || cd.fileName || '';
+            const slotId = cd.id || guessDocInfoFromFileName(fName).id;
+            const existing = slotMap.get(slotId);
+            if (!existing) {
+              slotMap.set(slotId, { ...cd, id: slotId });
             } else {
-              combinedDocs = appDocs;
+              const existingTime = getDocTimestamp(existing);
+              const newTime = getDocTimestamp(cd);
+              if (newTime >= existingTime) {
+                slotMap.set(slotId, { ...existing, ...cd, id: slotId });
+              } else {
+                slotMap.set(slotId, { ...cd, ...existing, id: slotId });
+              }
             }
-          } else if (appDocsFromTable.length > 0) {
-            combinedDocs = appDocsFromTable;
-          } else {
-            combinedDocs = [];
+          };
+
+          if (Array.isArray(appDocs)) {
+            appDocs.forEach(addCandidateDoc);
+          } else if (appDocs && typeof appDocs === 'object') {
+            Object.values(appDocs).forEach(docItem => {
+              if (docItem && typeof docItem === 'object') addCandidateDoc(docItem);
+            });
           }
+
+          // Merge storage/table docs in (they have latest actual storage files)
+          appDocsFromTable.forEach(addCandidateDoc);
+
+          const combinedDocs = Array.from(slotMap.values());
 
           return {
             ...app,

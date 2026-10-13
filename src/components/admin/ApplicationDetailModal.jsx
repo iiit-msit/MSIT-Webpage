@@ -18,6 +18,7 @@ import { StatusBadge, TestDataBadge } from './StatusBadge';
 import ConfirmDecisionModal from './ConfirmDecisionModal';
 import DocumentReviewModal from './DocumentReviewModal';
 import CertificateModal from './CertificateModal';
+import { extractAllApplicationDocuments } from '../../utils/documentStore';
 import { 
   addApplicationNote, 
   getApplicationNotes, 
@@ -310,11 +311,25 @@ export default function ApplicationDetailModal({
     }
   };
 
-  const docsList = currentApp.documents || [
-    { id: 'doc_1', doc_type: 'Marksheets / Transcripts', file_name: 'Consolidated_Transcripts.pdf', status: 'Pending', file_size: '2.4 MB' },
-    { id: 'doc_2', doc_type: 'Degree / Provisional Certificate', file_name: 'Degree_Certificate.pdf', status: 'Pending', file_size: '1.2 MB' },
-    { id: 'doc_3', doc_type: 'Photo ID Proof', file_name: 'Government_Photo_ID.pdf', status: 'Pending', file_size: '800 KB' }
-  ];
+  const extractedDocs = currentApp ? extractAllApplicationDocuments(currentApp) : [];
+  const docsList = (extractedDocs && extractedDocs.length > 0)
+    ? extractedDocs.map(d => ({
+        id: d.id,
+        doc_type: d.docType,
+        file_name: d.fileName,
+        file_size: d.fileSize || '1.5 MB',
+        status: d.status || 'Uploaded',
+        file_url: d.fileUrl || '',
+        storage_path: d.storagePath || '',
+        dataUrl: d.dataUrl || '',
+        rejection_reason: d.rejectionReason || null
+      }))
+    : [
+        { id: 'btech', doc_type: 'Undergraduate Degree Certificate / Transcripts', file_name: 'Consolidated_Transcripts.pdf', status: 'Pending', file_size: '2.4 MB' },
+        { id: 'degreeCert', doc_type: 'Degree / Provisional Certificate', file_name: 'Degree_Certificate.pdf', status: 'Pending', file_size: '1.2 MB' },
+        { id: '12th', doc_type: 'Class 12 / Intermediate Examination Marks Memo', file_name: 'Class12_Intermediate_MarksMemo.pdf', status: 'Pending', file_size: '1.6 MB' },
+        { id: '10th', doc_type: 'Class 10 / Secondary School Certificate (SSC)', file_name: 'Class10_SSC_Marksheet_Memo.pdf', status: 'Pending', file_size: '1.5 MB' }
+      ];
 
   return (
     <>

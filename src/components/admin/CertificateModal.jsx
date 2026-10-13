@@ -75,12 +75,28 @@ export default function CertificateModal({
   useEffect(() => {
     if (!isOpen) return;
     const requested = initialDocType || certificate?.type || 'btech';
+    const hasRealFile = (d) => Boolean(d && (d.fileUrl || d.storagePath || d.dataUrl));
+
     // Match requested by id or key
-    const match = allDocs.find(d => 
-      d.id === requested || 
-      d.key === requested || 
-      (d.docType && d.docType.toLowerCase().includes(requested.toLowerCase()))
-    );
+    let match = allDocs.find(d => d.id === requested || d.key === requested);
+
+    // If 'btech' (Degree) was requested but has no file, try degreeCert (Provisional) if it has a file
+    if (requested === 'btech') {
+      if (!match || !hasRealFile(match)) {
+        const degreeCertDoc = allDocs.find(d => (d.id === 'degreeCert' || d.key === 'degreeCertDoc') && hasRealFile(d));
+        if (degreeCertDoc) match = degreeCertDoc;
+      }
+    } else if (requested === 'degreeCert') {
+      if (!match || !hasRealFile(match)) {
+        const btechDoc = allDocs.find(d => (d.id === 'btech' || d.key === 'ugDegreeDoc') && hasRealFile(d));
+        if (btechDoc) match = btechDoc;
+      }
+    }
+
+    if (!match) {
+      match = allDocs.find(d => d.docType && d.docType.toLowerCase().includes(requested.toLowerCase()));
+    }
+
     if (match) {
       setSelectedDocId(match.id);
     } else if (allDocs.length > 0) {
@@ -164,9 +180,9 @@ export default function CertificateModal({
           if (!dbErr && Array.isArray(dbDocs) && dbDocs.length > 0) {
             const match = dbDocs.find(d => 
               (d.file_name && activeDoc.fileName && d.file_name.toLowerCase() === activeDoc.fileName.toLowerCase()) ||
-              (d.doc_type && activeDoc.docType && d.doc_type.toLowerCase().includes(activeDoc.docType.toLowerCase())) ||
-              (d.id && activeDoc.id && String(d.id) === String(activeDoc.id))
-            ) || dbDocs[0];
+              (d.id && activeDoc.id && String(d.id).toLowerCase() === String(activeDoc.id).toLowerCase()) ||
+              (d.doc_type && activeDoc.docType && d.doc_type.toLowerCase() === activeDoc.docType.toLowerCase())
+            );
 
             if (match) {
               if (match.storage_path) storagePath = match.storage_path;
@@ -361,34 +377,44 @@ export default function CertificateModal({
           }
 
           if (allStorageFiles.length > 0) {
-            // Match storage file to the requested document type
+            // Helper to extract timestamp from storage file name
+            const getStorageFileTimestamp = (fileName) => {
+              const match = (fileName || '').match(/_(\d{10,})\.[^.]+$/);
+              return match ? parseInt(match[1], 10) : 0;
+            };
+
+            // Sort newest files first so candidate updates take precedence
+            allStorageFiles.sort((a, b) => getStorageFileTimestamp(b.name) - getStorageFileTimestamp(a.name));
+
+            // Match storage file strictly to the active document type
             const docId = (activeDoc.id || '').toLowerCase();
             const docTypeStr = (activeDoc.docType || activeDoc.doc_type || '').toLowerCase();
             const matchedFile = allStorageFiles.find(f => {
               const fn = f.name.toLowerCase();
-              if ((docId === 'btech' || docTypeStr.includes('transcript') || docTypeStr.includes('marksheet') || docTypeStr.includes('b.tech') || docTypeStr.includes('b.e.') || docTypeStr.includes('qualifying')) &&
-                  (fn.includes('degree_marksheet') || fn.includes('consolidated') || fn.includes('transcript') || fn.includes('btech') || fn.includes('b_tech') || fn.includes('degree_certificate') || fn.includes('provisional')))
-                return true;
-              if ((docId === '10th' || docTypeStr.includes('class 10') || docTypeStr.includes('ssc') || docTypeStr.includes('secondary')) &&
-                  (fn.includes('class_10') || fn.includes('ssc') || fn.includes('10th')))
-                return true;
-              if ((docId === '12th' || docTypeStr.includes('class 12') || docTypeStr.includes('inter') || docTypeStr.includes('diploma')) &&
-                  (fn.includes('intermediate') || fn.includes('class_12') || fn.includes('12th')))
-                return true;
-              if ((docId === 'degreecert' || (docTypeStr.includes('degree') && (docTypeStr.includes('cert') || docTypeStr.includes('provisional')))) &&
-                  (fn.includes('degree_certificate') || fn.includes('provisional') || fn.includes('degree_marksheet')))
-                return true;
-              if ((docId === 'cv' || docTypeStr.includes('cv') || docTypeStr.includes('resume') || docTypeStr.includes('curriculum')) &&
-                  (fn.includes('curriculum_vitae') || fn.includes('cv') || fn.includes('resume')))
-                return true;
-              if ((docId === 'gr' || docTypeStr.includes('gre') || docTypeStr.includes('gate') || docTypeStr.includes('scorecard')) &&
-                  (fn.includes('gre') || fn.includes('gate') || fn.includes('scorecard')))
-                return true;
-              if ((docId === '16year' || docTypeStr.includes('16')) &&
-                  (fn.includes('16_year') || fn.includes('16year')))
-                return true;
+              if (docId === '10th' || docTypeStr.includes('class 10') || docTypeStr.includes('ssc') || docTypeStr.includes('secondary')) {
+                return fn.includes('class_10') || fn.includes('ssc') || fn.includes('10th');
+              }
+              if (docId === '12th' || docTypeStr.includes('class 12') || docTypeStr.includes('intermediate') || docTypeStr.includes('diploma') || docTypeStr.includes('higher secondary')) {
+                return fn.includes('intermediate') || fn.includes('class_12') || fn.includes('12th');
+              }
+              if (docId === 'degreecert' || docTypeStr.includes('provisional') || (docTypeStr.includes('degree') && docTypeStr.includes('cert'))) {
+                return fn.includes('degree_certificate') || fn.includes('provisional');
+              }
+              if (docId === 'btech' || docTypeStr.includes('transcript') || docTypeStr.includes('undergraduate') || (docTypeStr.includes('degree') && docTypeStr.includes('marksheet'))) {
+                return fn.includes('degree_marksheet') || fn.includes('consolidated') || fn.includes('transcript') || fn.includes('btech') || fn.includes('b_tech');
+              }
+              if (docId === 'cv' || docTypeStr.includes('cv') || docTypeStr.includes('resume')) {
+                return fn.includes('curriculum_vitae') || fn.includes('cv') || fn.includes('resume');
+              }
+              if (docId === 'gr' || docTypeStr.includes('gre') || docTypeStr.includes('gate') || docTypeStr.includes('scorecard')) {
+                return fn.includes('gre') || fn.includes('gate') || fn.includes('scorecard');
+              }
+              if (docId === '16year' || docTypeStr.includes('16')) {
+                return fn.includes('16_year') || fn.includes('16year');
+              }
               return false;
-            });
+            }) || (docId === 'btech' ? allStorageFiles.find(f => f.name.toLowerCase().includes('degree_certificate') || f.name.toLowerCase().includes('provisional')) : null)
+               || (docId === 'degreecert' ? allStorageFiles.find(f => f.name.toLowerCase().includes('degree_marksheet') || f.name.toLowerCase().includes('consolidated')) : null);
 
             if (matchedFile) {
               console.log(`[MSIT] Storage discovery matched "${matchedFile.name}" at ${matchedFile.path}`);

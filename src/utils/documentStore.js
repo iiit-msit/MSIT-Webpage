@@ -276,17 +276,84 @@ export function extractAllApplicationDocuments(app) {
 
   const docsMap = new Map();
 
-  // Helper to add or update doc in map
+  // Helper to extract timestamp from filename or date fields
+  const getDocTimestamp = (d) => {
+    if (!d) return 0;
+    const fName = d.fileName || d.file_name || '';
+    const match = fName.match(/_(\d{10,})\.[^.]+$/);
+    if (match) return parseInt(match[1], 10);
+    const dateStr = d.uploadedAt || d.uploaded_at;
+    if (dateStr) {
+      const t = new Date(dateStr).getTime();
+      if (!isNaN(t)) return t;
+    }
+    return 0;
+  };
+
+  // Helper to add or update doc in map (keeps the latest updated file)
   const addDoc = (id, docData) => {
     if (!id || !docData) return;
     const existing = docsMap.get(id);
-    docsMap.set(id, {
-      id,
-      ...existing,
-      ...docData,
-      applicantName,
-      applicationId: appId
-    });
+    if (!existing) {
+      docsMap.set(id, {
+        id,
+        ...docData,
+        applicantName,
+        applicationId: appId
+      });
+      return;
+    }
+
+    // If existing has a real file and docData is an empty placeholder, keep existing file
+    const existingHasFile = Boolean(existing.fileUrl || existing.storagePath || existing.dataUrl);
+    const newHasFile = Boolean(docData.fileUrl || docData.storagePath || docData.dataUrl);
+
+    if (existingHasFile && !newHasFile) {
+      docsMap.set(id, {
+        ...existing,
+        ...docData,
+        fileName: existing.fileName,
+        fileUrl: existing.fileUrl,
+        storagePath: existing.storagePath,
+        dataUrl: existing.dataUrl,
+        fileSize: existing.fileSize,
+        uploadedAt: existing.uploadedAt
+      });
+      return;
+    }
+
+    if (!existingHasFile && newHasFile) {
+      docsMap.set(id, {
+        id,
+        ...existing,
+        ...docData,
+        applicantName,
+        applicationId: appId
+      });
+      return;
+    }
+
+    // Both have files (or neither): compare timestamps to keep ONLY the latest updated file
+    const existingTime = getDocTimestamp(existing);
+    const newTime = getDocTimestamp(docData);
+
+    if (newTime >= existingTime) {
+      docsMap.set(id, {
+        id,
+        ...existing,
+        ...docData,
+        applicantName,
+        applicationId: appId
+      });
+    } else {
+      docsMap.set(id, {
+        id,
+        ...docData,
+        ...existing,
+        applicantName,
+        applicationId: appId
+      });
+    }
   };
 
   // 1. Inspect app.documents if it's an object (from draft or portal state)
@@ -296,7 +363,7 @@ export function extractAllApplicationDocuments(app) {
       const fName = raw.ugDegreeDoc.fileName || raw.ugDegreeDoc.file_name || 'BTech_Degree_Certificate.pdf';
       addDoc('btech', {
         key: 'ugDegreeDoc',
-        docType: 'Undergraduate Degree Certificate / Transcripts',
+        docType: raw.ugDegreeDoc.docType || raw.ugDegreeDoc.doc_type || 'Undergraduate Degree Certificate / Transcripts',
         fileName: fName,
         fileSize: raw.ugDegreeDoc.fileSize || raw.ugDegreeDoc.file_size || '2.4 MB',
         fileUrl: cleanDocUrl(raw.ugDegreeDoc.fileUrl || raw.ugDegreeDoc.file_url || raw.ugDegreeDoc.dataUrl || '', fName),
@@ -310,7 +377,7 @@ export function extractAllApplicationDocuments(app) {
       const fName = raw.degreeCertDoc.fileName || raw.degreeCertDoc.file_name || 'Provisional_Degree_Certificate.pdf';
       addDoc('degreeCert', {
         key: 'degreeCertDoc',
-        docType: 'Degree / Provisional Certificate',
+        docType: raw.degreeCertDoc.docType || raw.degreeCertDoc.doc_type || 'Degree / Provisional Certificate',
         fileName: fName,
         fileSize: raw.degreeCertDoc.fileSize || raw.degreeCertDoc.file_size || '1.8 MB',
         fileUrl: cleanDocUrl(raw.degreeCertDoc.fileUrl || raw.degreeCertDoc.file_url || raw.degreeCertDoc.dataUrl || '', fName),
@@ -324,7 +391,7 @@ export function extractAllApplicationDocuments(app) {
       const fName = raw.class10Doc.fileName || raw.class10Doc.file_name || 'Class10_SSC_Marksheet_Memo.pdf';
       addDoc('10th', {
         key: 'class10Doc',
-        docType: 'Class 10 / SSC Marksheet & Memo',
+        docType: raw.class10Doc.docType || raw.class10Doc.doc_type || 'Class 10 / SSC Marksheet & Memo',
         fileName: fName,
         fileSize: raw.class10Doc.fileSize || raw.class10Doc.file_size || '1.5 MB',
         fileUrl: cleanDocUrl(raw.class10Doc.fileUrl || raw.class10Doc.file_url || raw.class10Doc.dataUrl || '', fName),
@@ -338,7 +405,7 @@ export function extractAllApplicationDocuments(app) {
       const fName = raw.class12Doc.fileName || raw.class12Doc.file_name || 'Class12_Intermediate_MarksMemo.pdf';
       addDoc('12th', {
         key: 'class12Doc',
-        docType: 'Class 12 / Intermediate Examination Marks Memo',
+        docType: raw.class12Doc.docType || raw.class12Doc.doc_type || 'Class 12 / Intermediate Examination Marks Memo',
         fileName: fName,
         fileSize: raw.class12Doc.fileSize || raw.class12Doc.file_size || '1.6 MB',
         fileUrl: cleanDocUrl(raw.class12Doc.fileUrl || raw.class12Doc.file_url || raw.class12Doc.dataUrl || '', fName),
@@ -418,28 +485,47 @@ export function extractAllApplicationDocuments(app) {
   if (Array.isArray(app.documents) && app.documents.length > 0) {
     app.documents.forEach((d, idx) => {
       const typeStr = (d.doc_type || d.docType || '').toLowerCase();
-      let targetId = d.id || `doc_${idx}`;
+      const fNameStr = (d.file_name || d.fileName || '').toLowerCase();
+      let targetId = d.id;
 
-      if (typeStr.includes('provisional') || typeStr.includes('degree cert') || typeStr.includes('degree_cert') || (typeStr.includes('degree') && !typeStr.includes('b.tech') && !typeStr.includes('btech') && !typeStr.includes('transcript') && !typeStr.includes('undergraduate'))) {
-        targetId = 'degreeCert';
-      } else if (typeStr.includes('b.tech') || typeStr.includes('btech') || typeStr.includes('transcript') || typeStr.includes('undergraduate') || typeStr.includes('marks memo') || typeStr.includes('marksheet')) {
-        targetId = 'btech';
-      } else if (typeStr.includes('10') || typeStr.includes('ssc') || typeStr.includes('secondary')) {
-        targetId = '10th';
-      } else if (typeStr.includes('12') || typeStr.includes('inter') || typeStr.includes('intermediate') || typeStr.includes('diploma')) {
+      // Always check filename and docType first to correctly categorize and avoid collisions
+      if (fNameStr.includes('intermediate') || fNameStr.includes('class_12') || fNameStr.includes('12th') || typeStr.includes('intermediate') || typeStr.includes('class 12') || typeStr.includes('class_12') || typeStr.includes('diploma') || typeStr.includes('higher secondary')) {
         targetId = '12th';
-      } else if (typeStr.includes('16-year') || typeStr.includes('16 year') || typeStr.includes('16year')) {
+      } else if (fNameStr.includes('class_10') || fNameStr.includes('ssc') || fNameStr.includes('10th') || typeStr.includes('class 10') || typeStr.includes('class_10') || typeStr.includes('ssc') || typeStr.includes('secondary school')) {
+        targetId = '10th';
+      } else if (fNameStr.includes('degree_certificate') || fNameStr.includes('provisional') || typeStr.includes('provisional') || typeStr.includes('degree certificate') || typeStr.includes('degree cert') || typeStr.includes('degree_cert')) {
+        targetId = 'degreeCert';
+      } else if (fNameStr.includes('degree_marksheet') || fNameStr.includes('consolidated') || fNameStr.includes('transcript') || fNameStr.includes('btech') || fNameStr.includes('ug_degree') || typeStr.includes('degree marksheet') || typeStr.includes('consolidated marks') || typeStr.includes('b.tech') || typeStr.includes('btech') || typeStr.includes('transcript') || typeStr.includes('undergraduate') || (typeStr.includes('degree') && (typeStr.includes('marksheet') || typeStr.includes('marks memo')))) {
+        targetId = 'btech';
+      } else if (fNameStr.includes('16_year') || fNameStr.includes('16year') || typeStr.includes('16-year') || typeStr.includes('16 year') || typeStr.includes('16year')) {
         targetId = '16year';
-      } else if (typeStr.includes('gre') || typeStr.includes('gate') || typeStr.includes('scorecard')) {
-        targetId = 'gr';
-      } else if (typeStr.includes('cv') || typeStr.includes('resume')) {
+      } else if (fNameStr.includes('curriculum_vitae') || fNameStr.includes('cv') || fNameStr.includes('resume') || typeStr.includes('cv') || typeStr.includes('resume')) {
         targetId = 'cv';
+      } else if (fNameStr.includes('gre') || fNameStr.includes('gate') || fNameStr.includes('scorecard') || typeStr.includes('gre') || typeStr.includes('gate') || typeStr.includes('scorecard')) {
+        targetId = 'gr';
+      } else {
+        const canonicalSlots = ['10th', '12th', 'degreeCert', 'btech', 'cv', 'gr', '16year'];
+        if (canonicalSlots.includes(d.id)) {
+          targetId = d.id;
+        } else {
+          targetId = d.id || `doc_${idx}`;
+        }
       }
 
-      const fName = d.file_name || d.fileName || 'Document.pdf';
+      // Determine human-friendly docType
+      let displayDocType = d.doc_type || d.docType;
+      if (targetId === '12th') displayDocType = 'Class 12 / Intermediate Examination Marks Memo';
+      else if (targetId === '10th') displayDocType = 'Class 10 / Secondary School Certificate (SSC)';
+      else if (targetId === 'degreeCert') displayDocType = 'Degree / Provisional Certificate';
+      else if (targetId === 'btech') displayDocType = 'Undergraduate Degree Certificate / Transcripts';
+      else if (targetId === 'cv') displayDocType = 'Curriculum Vitae (CV) / Resume';
+      else if (targetId === 'gr') displayDocType = 'Official GRE / GATE Scorecard';
+      else if (targetId === '16year') displayDocType = 'Additional Qualifying Degree Certificate';
+
+      const fName = d.file_name || d.fileName || `${targetId}.pdf`;
       addDoc(targetId, {
         key: targetId,
-        docType: d.doc_type || d.docType || 'Candidate Document',
+        docType: displayDocType || 'Candidate Document',
         fileName: fName,
         fileSize: d.file_size || d.fileSize || '1.5 MB',
         fileUrl: cleanDocUrl(d.file_url || d.fileUrl || d.dataUrl || '', fName),
